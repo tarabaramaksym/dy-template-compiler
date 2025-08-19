@@ -4,17 +4,13 @@ var INJECTED_PRODUCTS = [].slice.call(container.querySelectorAll('.dy-recommenda
 
 let itemCount = 0;
 
-// Render dynamic content
 function renderDynamicContent() {
     [].slice.call(container.querySelectorAll('.dy-recommendation-product')).forEach(function(productEl) {
-        // Render sale driven USP elements
         const uspWrapper = productEl.querySelector('.sale-driven-usp-elements-wrapper');
         const uspDataAttr = productEl.getAttribute('data-sale-driven-usp');
-        console.log('uspDataAttr', uspDataAttr);
-        
+
         if (uspWrapper && uspDataAttr) {
             try {
-                // Data is already parsed by template engine
                 const uspData = JSON.parse(uspDataAttr);
                 const elements = uspData.elements || [];
                 const values = uspData.values || [];
@@ -25,10 +21,10 @@ function renderDynamicContent() {
                         uspHtml += `
                             <div class="sale-driven-usp-wrapper">
                                 <div class="sale-driven-usp-element" 
-                                     data-element="balloon" 
-                                     data-balloon-size="balloon-small" 
-                                     data-balloon-text="${element}" 
-                                     data-pdp-balloon="true" 
+                                     data-element="balloon"
+                                     data-balloon-size="balloon-small"
+                                     data-balloon-text="${element}"
+                                     data-pdp-balloon="true"
                                      data-plp-balloon="true">
                                     ${values[i]}
                                 </div>
@@ -42,13 +38,11 @@ function renderDynamicContent() {
             }
         }
 
-        // Render quality icons
         const iconsWrapper = productEl.querySelector('.quality-icons');
         const iconsDataAttr = productEl.getAttribute('data-quality-icons');
 
         if (iconsWrapper && iconsDataAttr) {
             try {
-                // Data is already parsed by template engine
                 const qualityIcons = JSON.parse(iconsDataAttr);
 
                 let iconsHtml = '';
@@ -66,10 +60,9 @@ function renderDynamicContent() {
             }
         }
 
-        // Render online availability for web products
         const isWebProductAttr = productEl.getAttribute('data-is-web-product');
         const onlineAvailabilityWrapper = productEl.querySelector('.online-availability-wrapper');
-        
+
         if (onlineAvailabilityWrapper && isWebProductAttr === 'true') {
             const availabilityHtml = `
                 <div class="dy-online-availability">
@@ -92,23 +85,20 @@ function renderDynamicContent() {
             onlineAvailabilityWrapper.innerHTML = availabilityHtml;
         }
 
-        // Render energy label
         const energyDataAttr = productEl.getAttribute('data-energy-data');
         const energyWrapper = productEl.querySelector('.energy-class');
-        
+
         if (energyWrapper && energyDataAttr) {
             try {
                 const energyData = JSON.parse(energyDataAttr);
-                
+
                 if (energyData && energyData.energy_label_code) {
                     let energyHtml = '<div class="energy-label-wrapper">';
-                    
-                    // Start link if energy sheet URL exists
+
                     if (energyData.energy_sheet_url) {
                         energyHtml += `<a href="${energyData.energy_sheet_url}" target="_blank" class="energy-link">`;
                     }
-                    
-                    // Energy label based on new/old type
+
                     if (energyData.is_new_label) {
                         energyHtml += `
                             <div class="energy-label energy-label--new">
@@ -122,13 +112,11 @@ function renderDynamicContent() {
                             </div>
                         `;
                     }
-                    
-                    // Close link if it was opened
+
                     if (energyData.energy_sheet_url) {
                         energyHtml += '</a>';
                     }
-                    
-                    // Add PDF link if exists
+
                     if (energyData.energy_pdf) {
                         energyHtml += `
                             <a href="${energyData.energy_pdf}" target="_blank" class="energy-pdf-link">
@@ -136,7 +124,7 @@ function renderDynamicContent() {
                             </a>
                         `;
                     }
-                    
+
                     energyHtml += '</div>';
                     energyWrapper.innerHTML = energyHtml;
                 }
@@ -145,7 +133,6 @@ function renderDynamicContent() {
             }
         }
 
-        // Show broken paint marker
         const isBrokenPaintAttr = productEl.getAttribute('data-is-broken-paint');
         const brokenPaintMarker = productEl.querySelector('.broken-paint-marker');
 
