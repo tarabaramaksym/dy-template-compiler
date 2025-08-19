@@ -4,6 +4,371 @@ var INJECTED_PRODUCTS = [].slice.call(container.querySelectorAll('.dy-recommenda
 
 let itemCount = 0;
 
+// Direct API endpoint 
+const baseUrl = 'http://localhost:3000';
+const endpoint = `${baseUrl}/rest/V1/bmx_products/getProductDataByShop`;
+const token = atob('QmVhcmVyIGVoZG41ZWVvdDc2bHIyMmp1MWR1ZnVnMG16OGNrYXlo');
+
+const addToCartBaseUrl = `${baseUrl}/checkout/cart/add/`;
+
+var slider = null;
+
+
+// Dynamic Yield Swatches Implementation
+class DySwatchUtils {
+    static mapSwatchTypeNumberToTypeCode(typeNumber) {
+        switch ("" + typeNumber) {
+            case "1":
+                return "color";
+            case "2":
+                return "image";
+            case "3":
+                return "empty";
+            case "0":
+            default:
+                return "text";
+        }
+    }
+
+    static getSwatchType(swatchConfig, attributeId, optionId) {
+        const config = swatchConfig[attributeId];
+        if (!config) return "text";
+
+        if (config[optionId] && typeof config[optionId].type !== 'undefined') {
+            return this.mapSwatchTypeNumberToTypeCode(config[optionId].type);
+        }
+
+        // Use type of first option if specific option not found
+        for (const optId in config) {
+            const option = config[optId];
+            if (typeof option.type !== 'undefined') {
+                return this.mapSwatchTypeNumberToTypeCode(option.type);
+            }
+        }
+        
+        return "text";
+    }
+
+    static isTextSwatch(swatchConfig, attributeId, optionId) {
+        return this.getSwatchType(swatchConfig, attributeId, optionId) === 'text';
+    }
+
+    static getSwatchBackgroundStyle(swatchConfig, attributeId, optionId) {
+        const config = this.getSwatchConfig(swatchConfig, attributeId, optionId);
+        const type = this.getSwatchType(swatchConfig, attributeId, optionId);
+
+        if (!config) return '';
+
+        if (type === 'color') {
+            let hexCodes = config.value.split(';').slice(0, 2);
+            
+            if (hexCodes.length === 1) {
+                return `background-color: ${hexCodes[0]};`;
+            }
+            
+            return `background: linear-gradient(45deg, ${hexCodes[0]} 50%, ${hexCodes[1]} 50%);`;
+        } else if (type === "image") {
+            return `background: #ffffff url('${config.value}') no-repeat center; background-size: cover;`;
+        }
+        
+        return '';
+    }
+
+    static getSwatchText(swatchConfig, configurableOptions, attributeId, optionId) {
+        const config = this.getSwatchConfig(swatchConfig, attributeId, optionId);
+        if (config && (config.label || config.value)) {
+            return config.label || config.value;
+        }
+
+        // Fallback to option config
+        if (configurableOptions.attributes && configurableOptions.attributes[attributeId]) {
+            const option = configurableOptions.attributes[attributeId].options.find(opt => opt.id == optionId);
+            return option ? option.label : '';
+        }
+
+        return '';
+    }
+
+    static getSwatchConfig(swatchConfig, attributeId, optionId) {
+        return swatchConfig[attributeId] && swatchConfig[attributeId][optionId] 
+            ? swatchConfig[attributeId][optionId] 
+            : null;
+    }
+}
+
+class DySwatchManager {
+    constructor(productElement, baseUrl, data) {
+        this.productElement = productElement;
+        this.data = data;
+        this.baseUrl = baseUrl;
+        this.selectedValues = {};
+        this.allowedAttributeOptions = [];
+        this.productIndex = null;
+        this.swatchesWrapper = productElement.querySelector('.dy-swatches-wrapper');
+        this.addToCartButton = productElement.querySelector('.add-to-cart');
+    }
+
+    render() {
+        if (!this.shouldRenderSwatches()) {
+            return;
+        }
+
+        this.findAllowedAttributeOptions();
+        this.renderSwatchAttributes();
+        this.updateAddToCartState();
+    }
+
+    shouldRenderSwatches() {
+        return this.data.swatchesConfig && 
+               this.data.configurableOptions && 
+               this.data.configurableOptions.attributes &&
+               Object.keys(this.data.swatchesConfig).length > 0;
+    }
+
+    findAllowedAttributeOptions() {
+        const allAttributes = this.data.configurableOptions.attributes;
+        
+        this.allowedAttributeOptions = [];
+
+        for (const attributeId in allAttributes) {
+            const attribute = allAttributes[attributeId];
+            this.allowedAttributeOptions[attributeId] = attribute.options.filter(option => {
+                return option.products && option.products.length > 0;
+            });
+        }
+    }
+
+    renderSwatchAttributes() {
+        if (!this.swatchesWrapper) {
+            return
+        };
+
+        const allAttributes = this.data.configurableOptions.attributes;
+        const swatchAttributes = Object.values(allAttributes).filter(attr => 
+            this.data.swatchesConfig[attr.id]
+        );
+
+        if (swatchAttributes.length === 0) return;
+
+        let html = '<div class="dy-swatch-attribute">';
+        html += '<div class="dy-swatch-attribute-options">';
+        html += '<div class="dy-swatch-options-container" role="radiogroup">';
+
+        swatchAttributes.forEach(attribute => {
+            const allowedOptions = this.allowedAttributeOptions[attribute.id] || [];
+            const visibleOptions = allowedOptions.slice(0, 7); // Show max 7 options
+            const hiddenCount = Math.max(0, allowedOptions.length - 7);
+
+            visibleOptions.forEach(option => {
+                html += this.renderSwatchOption(attribute, option);
+            });
+
+            if (hiddenCount > 0) {
+                html += this.renderExtraSwatchIndicator(hiddenCount);
+            }
+        });
+
+        html += '</div>';
+        html += '</div>';
+        html += '</div>';
+
+        this.swatchesWrapper.innerHTML = html;
+        this.bindEvents();
+    }
+
+    renderSwatchOption(attribute, option) {
+        const attributeId = attribute.id;
+        const optionId = option.id;
+        const isSelected = this.selectedValues[attributeId] == optionId;
+        const isTextSwatch = DySwatchUtils.isTextSwatch(this.data.swatchesConfig, attributeId, optionId);
+        const backgroundStyle = DySwatchUtils.getSwatchBackgroundStyle(this.data.swatchesConfig, attributeId, optionId);
+        const swatchText = DySwatchUtils.getSwatchText(this.data.swatchesConfig, this.data.configurableOptions, attributeId, optionId);
+
+        const activeClass = isSelected ? ' dy-active-swatch' : '';
+        const sizeClass = isTextSwatch ? '' : ' dy-visual-swatch';
+
+        return `
+            <div class="dy-option-item${activeClass}" data-attribute-id="${attributeId}" data-option-id="${optionId}">
+                <div class="dy-outer-wrap">
+                    <div class="dy-inner-wrap">
+                        <label class="dy-swatch-option${sizeClass}" style="${backgroundStyle}">
+                            <input type="radio" 
+                                   class="dy-swatch-input" 
+                                   name="super_attribute_${attributeId}" 
+                                   value="${optionId}"
+                                   ${isSelected ? 'checked' : ''}
+                                   aria-label="${swatchText}">
+                            ${isTextSwatch ? `<div class="dy-swatch-text">${swatchText}</div>` : ''}
+                        </label>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    renderExtraSwatchIndicator(count) {
+        return `
+            <div class="dy-extra-swatch-trigger">
+                <div class="dy-outer-wrap">
+                    <div class="dy-inner-wrap">
+                        <div class="dy-swatch-option dy-extra-swatch">
+                            <span>+</span>
+                            <span class="dy-extra-count">${count}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    bindEvents() {
+        const options = this.swatchesWrapper.querySelectorAll('.dy-option-item');
+
+        options.forEach(option => {
+            option.addEventListener('click', (e) => {
+                e.preventDefault();
+                const attributeId = option.dataset.attributeId;
+                const optionId = option.dataset.optionId;
+                this.changeOption(attributeId, optionId);
+            });
+        });
+
+        const extraTrigger = this.swatchesWrapper.querySelector('.dy-extra-swatch-trigger');
+
+        if (extraTrigger) {
+            extraTrigger.addEventListener('click', (e) => {
+                e.preventDefault();
+                // Navigate to product page for more options
+                const productUrl = this.productElement.getAttribute('href');
+                if (productUrl) {
+                    window.open(productUrl, '_blank');
+                }
+            });
+        }
+    }
+
+    changeOption(attributeId, optionId) {
+        if (this.selectedValues[attributeId] == optionId) {
+            delete this.selectedValues[attributeId];
+        } else {
+            this.selectedValues[attributeId] = optionId;
+        }
+
+        this.findSimpleIndex();
+        this.updateSwatchUI();
+        this.updateGallery();
+        this.updateAddToCartState();
+    }
+
+    findSimpleIndex() {
+        const productIndexes = this.data.configurableOptions.index;
+
+        this.productIndex = Object.keys(productIndexes).find(productIndex => {
+            const productCandidateOptions = productIndexes[productIndex];
+
+            for (const productOption in productCandidateOptions) {
+                if (!this.selectedValues[productOption] || 
+                    this.selectedValues[productOption] != productCandidateOptions[productOption]) {
+                    return false;
+                }
+            }
+            return true;
+        });
+    }
+
+    updateSwatchUI() {
+        const options = this.swatchesWrapper.querySelectorAll('.dy-option-item');
+
+        options.forEach(option => {
+            const attributeId = option.dataset.attributeId;
+            const optionId = option.dataset.optionId;
+            const isSelected = this.selectedValues[attributeId] == optionId;
+
+            if (isSelected) {
+                option.classList.add('dy-active-swatch');
+                option.querySelector('input').checked = true;
+            } else {
+                option.classList.remove('dy-active-swatch');
+                option.querySelector('input').checked = false;
+            }
+        });
+    }
+
+    updateGallery() {
+        if (!this.productIndex) {
+            return
+        };
+
+        const productId = this.productIndex;
+
+        fetch(`${this.baseUrl}/catalog/ajax/getcustomstockpricelist?product_id=${productId}&isAjax=true`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.errors) {
+                console.warn('Gallery update errors:', data.errors);
+            } else {
+                const image = data && data.medium;
+                if (image) {
+                    this.updateProductImage(image);
+                }
+            }
+        })
+        .catch(error => {
+            console.warn('Gallery update failed:', error);
+        });
+    }
+
+    updateProductImage(imageUrl) {
+        const productImage = this.productElement.querySelector('.dy-recommendation-product__image');
+        if (productImage && imageUrl) {
+            productImage.src = imageUrl;
+        }
+    }
+
+    updateAddToCartState() {
+        if (!this.addToCartButton) return;
+
+        const selectedProduct = this.getSelectedChildProduct();
+        
+        if (!selectedProduct) {
+            this.addToCartButton.disabled = true;
+            this.addToCartButton.classList.add('dy-disabled');
+            this.addToCartButton.removeAttribute('data-selected-product-id');
+            this.addToCartButton.removeAttribute('data-selected-sku');
+        } else {
+            this.addToCartButton.disabled = false;
+            this.addToCartButton.classList.remove('dy-disabled');
+            this.addToCartButton.setAttribute('data-selected-product-id', selectedProduct.child_id);
+            this.addToCartButton.setAttribute('data-selected-sku', selectedProduct.child_sku);
+        }
+    }
+
+    getSelectedChildProduct() {
+        if (Object.keys(this.selectedValues).length === 0) {
+            return null;
+        }
+
+        return this.data.childProductsMapping.find(child => {
+            return Object.entries(this.selectedValues).every(([attrId, optionId]) => {
+                return child.attribute_values[attrId] == optionId;
+            });
+        });
+    }
+}
+
+renderDynamicContent();
+setResponsiveAttributes();
+parsePriceHtml('.rec_item_${dyVariationId} .rec_price_num');
+processEnergyLabels();
+bindAddToCart();
+hidePackageUnits();
+
 function renderDynamicContent() {
     [].slice.call(container.querySelectorAll('.dy-recommendation-product')).forEach(function(productEl) {
         const uspWrapper = productEl.querySelector('.sale-driven-usp-elements-wrapper');
@@ -139,23 +504,36 @@ function renderDynamicContent() {
         if (brokenPaintMarker && isBrokenPaintAttr === 'true') {
             brokenPaintMarker.style.display = 'flex';
         }
+
+        // Render swatches for this product
+        renderSwatches(productEl);
     });
 }
 
-// Direct API endpoint 
-const endpoint = 'https://www.byggmax.se/rest/V1/bmx_products/getProductDataByShop';
-const token = atob('QmVhcmVyIGVoZG41ZWVvdDc2bHIyMmp1MWR1ZnVnMG16OGNrYXlo');
+function renderSwatches(productElement) {
+    try {
+        const swatchesConfig = JSON.parse(productElement.dataset.swatchesConfig || '{}');
+        const configurableOptions = JSON.parse(productElement.dataset.configurableOptions || '{}');
+        const childProductsMapping = JSON.parse(productElement.dataset.childProductsMapping || '[]');
+        const isSingleOption = productElement.dataset.isSingleOption == 'true';
 
-const addToCartBaseUrl = 'https://www.byggmax.se/checkout/cart/add/';
+        if (Object.keys(swatchesConfig).length === 0 || !isSingleOption) {
+            return;
+        }
 
-var slider = null;
+        const swatchManager = new DySwatchManager(productElement, baseUrl, {
+            swatchesConfig,
+            configurableOptions,
+            childProductsMapping
+        });
 
-renderDynamicContent();
-setResponsiveAttributes();
-parsePriceHtml('.rec_item_${dyVariationId} .rec_price_num');
-processEnergyLabels();
-bindAddToCart();
-hidePackageUnits();
+        swatchManager.render();
+
+        productElement.swatchManager = swatchManager;
+    } catch (error) {
+        console.warn('Failed to initialize swatches for product:', error);
+    }
+}
 
 function hidePackageUnits() {
     let excludedUnits = ['st', 'stk', 'kpl', 'stk'];
@@ -624,6 +1002,25 @@ function handleAddToCart(button) {
             form_key: formKey,
             qty: 1
         };
+
+    // Check if product has swatches and get selected product data
+    const selectedProductId = button.getAttribute('data-selected-product-id');
+    const selectedSku = button.getAttribute('data-selected-sku');
+    
+    if (selectedProductId) {
+        // Use selected child product for swatches
+        data.product = selectedProductId;
+        data.item = selectedProductId;
+        
+        // Get swatch manager to get selected attribute values
+        const swatchManager = product.swatchManager;
+        if (swatchManager && swatchManager.selectedValues) {
+            // Add selected attribute values to form data
+            Object.entries(swatchManager.selectedValues).forEach(([attributeId, optionId]) => {
+                data['super_attribute[' + attributeId + ']'] = optionId;
+            });
+        }
+    }
 
     if (url.indexOf('#') !== -1) {
         superAttributePairs.forEach(function (pair) {

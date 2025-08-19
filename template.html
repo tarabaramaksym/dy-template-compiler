@@ -7,7 +7,7 @@
             <div class="dy-recommendations__slider-wrapper">
                 ${#Recommendations}
                 <div 
-                    onclick="window.tpEventToDL('DY Recommendation', ${dyTagId})" class="dy-recommendation-product rec_item_${dyVariationId}"
+                    onclick="window.tpEventToDL('DY Recommendation', '${dyTagId}')" class="dy-recommendation-product rec_item_${dyVariationId}"
                     href="${url}"
                     data-dy-sku="${sku}"
                     data-parent-id="${parent-id}"
@@ -19,6 +19,7 @@
                     data-swatches-config='${swatches_config}'
                     data-configurable-options='${configurable_options}'
                     data-child-products-mapping='${child_products_mapping}'
+                    data-is-single-option='${is_single_option}'
                 >
                     <div class="dy-recommendation-product-container">
 
@@ -73,7 +74,7 @@
                                 </div>
 
                                 <div class="dy-swatches-wrapper">
-
+                                <!-- Swatches will be rendered here by JavaScript -->
                                 </div>
 
                                 <div class="icon-wrapper">
@@ -94,7 +95,7 @@
                                 </div>
                             </div>
                             <div class="actions">
-                                <button onclick="window.tpEventToDL('DY Recommendation', ${dyTagId}, 'a2c')" href="#" class="add-to-cart">Lägg i varukorg</button>
+                                <button onclick="window.tpEventToDL('DY Recommendation', '${dyTagId}', 'a2c')" href="#" class="add-to-cart">Lägg i varukorg</button>
                             </div>
                         </div>
                     </div>
