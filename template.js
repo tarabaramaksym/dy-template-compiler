@@ -4,6 +4,158 @@ var INJECTED_PRODUCTS = [].slice.call(container.querySelectorAll('.dy-recommenda
 
 let itemCount = 0;
 
+// Render dynamic content
+function renderDynamicContent() {
+    [].slice.call(container.querySelectorAll('.dy-recommendation-product')).forEach(function(productEl) {
+        // Render sale driven USP elements
+        const uspWrapper = productEl.querySelector('.sale-driven-usp-elements-wrapper');
+        const uspDataAttr = productEl.getAttribute('data-sale-driven-usp');
+        console.log('uspDataAttr', uspDataAttr);
+        
+        if (uspWrapper && uspDataAttr) {
+            try {
+                // Data is already parsed by template engine
+                const uspData = JSON.parse(uspDataAttr);
+                const elements = uspData.elements || [];
+                const values = uspData.values || [];
+
+                let uspHtml = '';
+                elements.forEach((element, i) => {
+                    if (values[i]) {
+                        uspHtml += `
+                            <div class="sale-driven-usp-wrapper">
+                                <div class="sale-driven-usp-element" 
+                                     data-element="balloon" 
+                                     data-balloon-size="balloon-small" 
+                                     data-balloon-text="${element}" 
+                                     data-pdp-balloon="true" 
+                                     data-plp-balloon="true">
+                                    ${values[i]}
+                                </div>
+                            </div>
+                        `;
+                    }
+                });
+                uspWrapper.innerHTML = uspHtml;
+            } catch (e) {
+                console.error('Error parsing USP data:', e);
+            }
+        }
+
+        // Render quality icons
+        const iconsWrapper = productEl.querySelector('.quality-icons');
+        const iconsDataAttr = productEl.getAttribute('data-quality-icons');
+
+        if (iconsWrapper && iconsDataAttr) {
+            try {
+                // Data is already parsed by template engine
+                const qualityIcons = JSON.parse(iconsDataAttr);
+
+                let iconsHtml = '';
+                qualityIcons.forEach(iconData => {
+                    iconsHtml += `
+                        <div class="quality-icon quality-icon--${iconData.icon}" title="${iconData.icon}">
+                            <img src="${iconData.icon_url}" alt="${iconData.icon}" />
+                        </div>
+                    `;
+                });
+
+                iconsWrapper.innerHTML = iconsHtml;
+            } catch (e) {
+                console.error('Error parsing quality icons data:', e);
+            }
+        }
+
+        // Render online availability for web products
+        const isWebProductAttr = productEl.getAttribute('data-is-web-product');
+        const onlineAvailabilityWrapper = productEl.querySelector('.online-availability-wrapper');
+        
+        if (onlineAvailabilityWrapper && isWebProductAttr === 'true') {
+            const availabilityHtml = `
+                <div class="dy-online-availability">
+                    <span aria-hidden="true" class="dy-availability-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 20 21" fill="none" role="img">
+                            <g clip-path="url(#clip0_11362_5932_37)">
+                            <path d="M19.5117 14.0751C19.5117 14.0751 12.2333 10.7667 12.2075 10.7584C11.6008 10.5517 10.9425 10.7042 10.4892 11.1576C10.0358 11.6109 9.88333 12.2692 10.1208 12.9501L13.4075 20.1792C13.54 20.4718 13.8292 20.6617 14.1508 20.6676H14.1667C14.4817 20.6676 14.7708 20.4892 14.9125 20.2067L16.455 17.1217L19.54 15.5792C19.8275 15.4351 20.0067 15.1401 20.0008 14.8184C19.995 14.4976 19.805 14.2084 19.5125 14.0751H19.5117ZM15.4608 15.7551C15.3 15.8359 15.1683 15.9667 15.0883 16.1276L14.2017 17.9009L11.665 12.3376L17.2325 14.8692L15.4617 15.7542L15.4608 15.7551ZM10.76 18.9667C10.6167 18.9792 10.4725 18.9884 10.3267 18.9942C9.77 18.4434 8.31833 16.8959 7.30667 14.8342H7.91667C8.37667 14.8342 8.75 14.4617 8.75 14.0009C8.75 13.5401 8.37667 13.1676 7.91667 13.1676H6.64167C6.39917 12.3742 6.25 11.5342 6.25 10.6676C6.25 9.80092 6.4 8.96175 6.64333 8.16758H13.3575C13.4558 8.49008 13.5392 8.82008 13.6033 9.15675C13.69 9.60925 14.1275 9.90758 14.5775 9.81925C15.0292 9.73341 15.3258 9.29675 15.24 8.84508C15.1967 8.61592 15.145 8.39008 15.0875 8.16758H17.915C17.9258 8.16758 17.9375 8.16758 17.9483 8.16758C18.1975 8.95758 18.3317 9.79758 18.3317 10.6684C18.3317 10.9242 18.32 11.1767 18.2975 11.4267C18.2567 11.8851 18.5942 12.2901 19.0525 12.3317C19.5125 12.3767 19.9167 12.0351 19.9575 11.5767C19.9842 11.2776 19.9983 10.9742 19.9983 10.6684C20 5.15258 15.5142 0.666748 10 0.666748C4.48583 0.666748 0 5.15258 0 10.6667C0 16.1809 4.48583 20.6667 9.99917 20.6667C10.305 20.6667 10.6075 20.6526 10.9058 20.6259C11.3642 20.5851 11.7033 20.1809 11.6625 19.7217C11.6217 19.2642 11.2183 18.9259 10.7592 18.9659L10.76 18.9667ZM4.91 13.1676H2.08333C2.0725 13.1676 2.06167 13.1676 2.05 13.1676C1.80083 12.3776 1.66667 11.5376 1.66667 10.6667C1.66667 9.79592 1.80083 8.95591 2.05 8.16591C2.06083 8.16591 2.07167 8.16591 2.08333 8.16591H4.91C4.70583 8.96175 4.58333 9.79842 4.58333 10.6659C4.58333 11.5334 4.705 12.3701 4.91 13.1659V13.1676ZM7.31083 6.50092C8.16167 4.77008 9.32333 3.39758 10.0017 2.67758C10.6808 3.39675 11.8425 4.76675 12.6933 6.50092H7.31083ZM17.215 6.50092H14.525C13.8658 4.92925 12.9517 3.59425 12.165 2.62008C14.3142 3.19925 16.1225 4.61758 17.215 6.50092ZM7.83333 2.62008C7.04667 3.59425 6.13167 4.92925 5.47333 6.50008H2.785C3.87667 4.61675 5.68417 3.19842 7.83333 2.62008ZM2.785 14.8334H5.47333C6.13167 16.4051 7.04667 17.7392 7.83333 18.7134C5.685 18.1342 3.8775 16.7159 2.785 14.8334Z" fill="black"></path>
+                            </g>
+                            <defs>
+                            <clipPath id="clip0_11362_5932_37">
+                            <rect width="20" height="20" fill="white" transform="translate(0 0.666748)"></rect>
+                            </clipPath>
+                            </defs>
+                            <title>globe-black</title>
+                        </svg>
+                    </span>
+                    <span class="dy-online-availability-text">Endast online</span>
+                </div>
+            `;
+            onlineAvailabilityWrapper.innerHTML = availabilityHtml;
+        }
+
+        // Render energy label
+        const energyDataAttr = productEl.getAttribute('data-energy-data');
+        const energyWrapper = productEl.querySelector('.energy-class');
+        
+        if (energyWrapper && energyDataAttr) {
+            try {
+                const energyData = JSON.parse(energyDataAttr);
+                
+                if (energyData && energyData.energy_label_code) {
+                    let energyHtml = '<div class="energy-label-wrapper">';
+                    
+                    // Start link if energy sheet URL exists
+                    if (energyData.energy_sheet_url) {
+                        energyHtml += `<a href="${energyData.energy_sheet_url}" target="_blank" class="energy-link">`;
+                    }
+                    
+                    // Energy label based on new/old type
+                    if (energyData.is_new_label) {
+                        energyHtml += `
+                            <div class="energy-label energy-label--new">
+                                <span class="energy-code new" data-energy-label="${energyData.energy_label_code}"></span>
+                            </div>
+                        `;
+                    } else {
+                        energyHtml += `
+                            <div class="energy-label" data-energy-label="${energyData.energy_label_code}" data-energy-class="${energyData.energy_class_for_old_label}" style="display: none;">
+                                <span class="energy-code"></span>
+                            </div>
+                        `;
+                    }
+                    
+                    // Close link if it was opened
+                    if (energyData.energy_sheet_url) {
+                        energyHtml += '</a>';
+                    }
+                    
+                    // Add PDF link if exists
+                    if (energyData.energy_pdf) {
+                        energyHtml += `
+                            <a href="${energyData.energy_pdf}" target="_blank" class="energy-pdf-link">
+                                Produktinfo
+                            </a>
+                        `;
+                    }
+                    
+                    energyHtml += '</div>';
+                    energyWrapper.innerHTML = energyHtml;
+                }
+            } catch (e) {
+                console.error('Error parsing energy data:', e);
+            }
+        }
+
+        // Show broken paint marker
+        const isBrokenPaintAttr = productEl.getAttribute('data-is-broken-paint');
+        const brokenPaintMarker = productEl.querySelector('.broken-paint-marker');
+
+        if (brokenPaintMarker && isBrokenPaintAttr === 'true') {
+            brokenPaintMarker.style.display = 'flex';
+        }
+    });
+}
+
+// Direct API endpoint 
 const endpoint = 'https://www.byggmax.se/rest/V1/bmx_products/getProductDataByShop';
 const token = atob('QmVhcmVyIGVoZG41ZWVvdDc2bHIyMmp1MWR1ZnVnMG16OGNrYXlo');
 
@@ -11,19 +163,72 @@ const addToCartBaseUrl = 'https://www.byggmax.se/checkout/cart/add/';
 
 var slider = null;
 
+renderDynamicContent();
 setResponsiveAttributes();
 parsePriceHtml('.rec_item_${dyVariationId} .rec_price_num');
+processEnergyLabels();
 bindAddToCart();
 hidePackageUnits();
 
 function hidePackageUnits() {
-  let excludedUnits = ['st', 'stk', 'kpl', 'stk'];
-  [].slice.call(container.querySelectorAll('.rec_price_package')).forEach(function(packageUnit) {
-    let unitValue = packageUnit.textContent.replace('/','');
-      if (excludedUnits.includes(unitValue)) {
-        packageUnit.innerHTML = '&nbsp;';
-      }
-  });
+    let excludedUnits = ['st', 'stk', 'kpl', 'stk'];
+
+    [].slice.call(container.querySelectorAll('.rec_price_package')).forEach(function (packageUnit) {
+        let unitValue = packageUnit.textContent.replace('/', '');
+        if (excludedUnits.includes(unitValue)) {
+            packageUnit.innerHTML = '&nbsp;';
+        }
+    });
+}
+
+function processEnergyLabels() {
+    // process old labels (with data attributes)
+    [].slice.call(container.querySelectorAll('.energy-label[data-energy-label]')).forEach(function (energyLabel) {
+        const energyCode = energyLabel.getAttribute('data-energy-label');
+        const energyClass = energyLabel.getAttribute('data-energy-class');
+        const span = energyLabel.querySelector('.energy-code');
+
+        if (!energyCode) {
+            return
+        }
+
+        const plusCount = (energyCode.match(/\+/g) || []).length;
+        const cleanCode = energyCode.replace(/\+/g, '');
+
+        if (plusCount > 0) {
+            span.classList.add(`plus-${plusCount}`);
+        }
+
+        span.textContent = cleanCode;
+
+        energyLabel.classList.add(`energy-label--class-${energyCode.toLowerCase()}`);
+
+        if (energyClass) {
+            energyLabel.classList.add(`energy-label--class-${energyClass}`);
+        }
+
+        energyLabel.style.display = 'block';
+    });
+
+    // process new labels (energy-label--new)
+    [].slice.call(container.querySelectorAll('.energy-label.energy-label--new')).forEach(function (energyLabel) {
+        const span = energyLabel.querySelector('.energy-code');
+
+        if (!span) {
+            return
+        }
+
+        const energyCode = span.getAttribute('data-energy-label');
+
+        if (!energyCode) {
+            return
+        }
+
+        const energyClass = energyCode.toLowerCase().replaceAll('+', '') + 'new';
+        span.classList.add(energyClass);
+
+        span.classList.add('bg-contain', 'bg-no-repeat', 'bg-right');
+    });
 }
 
 function setUspText() {
@@ -45,7 +250,7 @@ function setUspText() {
         'Customer Favourite': 'Kundfavorit',
     };
 
-    [].slice.call(container.querySelectorAll('.product-usp-element')).forEach(function(balloon) {
+    [].slice.call(container.querySelectorAll('.product-usp-element')).forEach(function (balloon) {
         // Default case
         let result = balloon.getAttribute('data-usp'),
             useMap = true;
@@ -53,7 +258,7 @@ function setUspText() {
         if (!result || result === 'None' || result === 'Ingen' || result === 'usp_element' || result === 'none') {
             return;
         }
-        
+
 
         // Percent discount
         if (result === 'percent-discount' || result === 'Percent Discount (x%)') {
@@ -65,7 +270,7 @@ function setUspText() {
 
         // X for
         if (result === 'x-for' || result === 'X For') {
-            result = '<strong>' + balloon.getAttribute('data-x-value') + '</strong>' + ' ' +  textMap['X For'];
+            result = '<strong>' + balloon.getAttribute('data-x-value') + '</strong>' + ' ' + textMap['X For'];
             useMap = false;
         }
 
@@ -88,7 +293,7 @@ function setUspText() {
 
             result = textMap[result];
         }
-        
+
         balloon.style.display = 'flex';
 
         //Avoid displaying "undefined"
@@ -96,16 +301,16 @@ function setUspText() {
             balloon.style.display = 'none';
             return;
         }
-        
+
         balloon.innerHTML = balloon.innerHTML + '<span class="bubble-text">' + result + '</span>';
     });
     //DY event for content loaded in PDP recommendation
-    typeof DY.API === 'function' ? DY.API("event", {name: "PDP Rec Updated"}) : '';
+    typeof DY.API === 'function' ? DY.API("event", { name: "PDP Rec Updated" }) : '';
 }
 
 function splitPrice() {
     [].slice.call(container.querySelectorAll('.dy-recommendation-product__detail--price'))
-        .forEach(function(el) {
+        .forEach(function (el) {
             let splitPrice = el.dataset.price.split('.');
 
             if (typeof splitPrice[1] !== 'undefined') {
@@ -123,14 +328,14 @@ function splitPrice() {
             var parsedPrice = splitPrice[0];
 
             if (parsedPrice.toString().length >= 4) {
-                parsedPrice = parsedPrice.toString().replace(/(\d)(?=(\d{3})+$)/g, '$1'+' ');
+                parsedPrice = parsedPrice.toString().replace(/(\d)(?=(\d{3})+$)/g, '$1' + ' ');
             }
 
             el.querySelectorAll('.integer')[0].textContent = parsedPrice;
         });
 }
 
-initSlider().then(function() {
+initSlider().then(function () {
     var slider = new Swiper(container.querySelector('.dy-recommendations__slider'), getSliderOptions());
 });
 
@@ -165,7 +370,7 @@ function setResponsiveAttributes() {
         }
     }];
 
-    settings.forEach(function(item) {
+    settings.forEach(function (item) {
         var el = container.querySelector(item.el);
         for (var key in item.data) {
             if (item.data[key]) {
@@ -186,10 +391,10 @@ function getSliderOptions() {
     var ITEMS_TO_DISPLAY_MOBILE = parseInt('${Mobile}');
 
     var ENABLE_LOOP = 0;
-    if(SCREEN_WIDTH <= '${Breakpoint Mobile}' && INJECTED_PRODUCTS > ITEMS_TO_DISPLAY_MOBILE ||
+    if (SCREEN_WIDTH <= '${Breakpoint Mobile}' && INJECTED_PRODUCTS > ITEMS_TO_DISPLAY_MOBILE ||
         SCREEN_WIDTH > '${Breakpoint Mobile}' && SCREEN_WIDTH <= '${Breakpoint Tablet}' && INJECTED_PRODUCTS > ITEMS_TO_DISPLAY_TABLET ||
         SCREEN_WIDTH > '${Breakpoint Tablet}' && SCREEN_WIDTH <= '${Breakpoint Desktop}' && INJECTED_PRODUCTS > ITEMS_TO_DISPLAY_DESKTOP ||
-        SCREEN_WIDTH > '${Breakpoint Desktop}' && INJECTED_PRODUCTS > ITEMS_TO_DISPLAY_XL){
+        SCREEN_WIDTH > '${Breakpoint Desktop}' && INJECTED_PRODUCTS > ITEMS_TO_DISPLAY_XL) {
         ENABLE_LOOP = !!parseInt('${Infinite Scroll}');
     }
 
@@ -247,9 +452,9 @@ function getSliderOptions() {
 }
 
 function appendJSFile(url) {
-    return DYO.Q.Promise(function(resolve, reject) {
+    return DYO.Q.Promise(function (resolve, reject) {
         if (typeof define === 'function' && define.amd) {
-            require([url], function(swiper) {
+            require([url], function (swiper) {
                 window.Swiper = swiper;
                 resolve();
             });
@@ -293,19 +498,43 @@ function parsePriceHtml(selector) {
 }
 
 async function fetchPrices(shopId, skus, customerType) {
-    const rawResponse = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-            Authorization: token,
-            Accept: 'application/json',
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            shop: shopId || false, skus, customer_type: customerType, country: 'SE'
-        })
-    });
-    const response = await rawResponse.json();
-    return response;
+    const headers = {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+        Authorization: token
+    };
+
+    try {
+        const rawResponse = await fetch(endpoint, {
+            method: 'POST',
+            headers: headers,
+            body: JSON.stringify({
+                shop: shopId || false, skus, customer_type: customerType, country: 'SE'
+            })
+        });
+
+        console.log('Fetch response status:', rawResponse.status);
+        console.log('Fetch response headers:', Object.fromEntries(rawResponse.headers.entries()));
+
+        if (!rawResponse.ok) {
+            throw new Error(`HTTP error! status: ${rawResponse.status}`);
+        }
+
+        const responseText = await rawResponse.text();
+        console.log('Raw response text:', responseText.substring(0, 200) + '...');
+
+        if (!responseText) {
+            throw new Error('Empty response received');
+        }
+
+        const response = JSON.parse(responseText);
+        return response;
+    } catch (error) {
+        console.error('fetchPrices error:', error);
+        console.error('Endpoint:', endpoint);
+        console.error('Headers:', headers);
+        throw error;
+    }
 }
 
 function updatePrices(nodeList, dynamicPrices) {
@@ -327,19 +556,19 @@ function updatePrices(nodeList, dynamicPrices) {
                 if (dynamicPrice.regular_price !== dynamicPrice.final_price) {
                     itemWrapper.classList.add('has-discount');
                     const oldPriceNode = number.getAttribute('data-price-old');
-                    
+
                     if (oldPriceNode) {
-                      const productUspElem = itemWrapper.querySelector('.product-usp-element');
-                      number.classList.add('visible');
-                      updatePriceElement(dynamicPrice.regular_price, number);
-                      productUspElem.setAttribute('data-usp', 'percent-discount');
-                      productUspElem.setAttribute('data-x-value', dynamicPrice.discount_percentage);
-                      
-                      if (dynamicPrice.discount_end_date) {
-                        const productMessage = itemWrapper.querySelector('.dy-recommendation-product__detail_message');
-                        productMessage.style.display = 'flex';
-                        productMessage.innerHTML = 'Priset gäller tom ' + dynamicPrice.discount_end_date; 
-                      }
+                        const productUspElem = itemWrapper.querySelector('.product-usp-element');
+                        number.classList.add('visible');
+                        updatePriceElement(dynamicPrice.regular_price, number);
+                        productUspElem.setAttribute('data-usp', 'percent-discount');
+                        productUspElem.setAttribute('data-x-value', dynamicPrice.discount_percentage);
+
+                        if (dynamicPrice.discount_end_date) {
+                            const productMessage = itemWrapper.querySelector('.dy-recommendation-product__detail_message');
+                            productMessage.style.display = 'flex';
+                            productMessage.innerHTML = 'Priset gäller tom ' + dynamicPrice.discount_end_date;
+                        }
                     }
                 }
             }
@@ -352,7 +581,7 @@ function updatePrices(nodeList, dynamicPrices) {
     if (slider !== null) {
         slider.update();
     }
-    
+
 }
 
 function updatePriceElement(price, elementNode) {
@@ -418,18 +647,17 @@ function handleAddToCart(button) {
     }
 
     if (!selectedStore) {
-      return window.dispatchEvent(new CustomEvent('open-store-switcher-modal', {
-        detail: {
-          postParams: JSON.stringify(data)
-        }
-      }));
+        return window.dispatchEvent(new CustomEvent('open-store-switcher-modal', {
+            detail: {
+                postParams: JSON.stringify(data)
+            }
+        }));
     }
-        
+
     doFetch(targetUrl, getFormData(data), button);
 }
 
-async function doFetch(targetUrl, formData, button)
-{
+async function doFetch(targetUrl, formData, button) {
     button.innerHTML = 'Lägger till...';
 
     const rawResponse = await fetch(targetUrl, {
@@ -440,27 +668,27 @@ async function doFetch(targetUrl, formData, button)
         },
         cache: 'no-cache',
         body: new URLSearchParams(formData)
-    }).then(function(response) {
+    }).then(function (response) {
         return response.json();
-    }).then(function(response) {
+    }).then(function (response) {
         window.dispatchEvent(new CustomEvent('${Add To Cart DY Action Method}'));
 
         if ('isSuccessProductAddToCart' in response && response.isSuccessProductAddToCart !== false) {
             if (typeof window.dispatchCartMessage !== 'undefined') {
-              window.dispatchCartMessage({
-                  type: 'success',
-                  text: response.message
-              });
+                window.dispatchCartMessage({
+                    type: 'success',
+                    text: response.message
+                });
             }
-          
-            if (typeof(dataLayer) !== 'undefined' && 'eventPush' in response) {
+
+            if (typeof (dataLayer) !== 'undefined' && 'eventPush' in response) {
                 dataLayer.push(response['eventPush']);
             }
         }
 
         if ('dyPushes' in response) {
-            response.dyPushes.forEach(function(dyPush) {
-                let cartSuccessEvent = new CustomEvent('addToCartSuccess', {'detail' : {'dyPush': dyPush }});
+            response.dyPushes.forEach(function (dyPush) {
+                let cartSuccessEvent = new CustomEvent('addToCartSuccess', { 'detail': { 'dyPush': dyPush } });
                 window.dispatchEvent(cartSuccessEvent);
             });
         }
@@ -487,25 +715,25 @@ function getFormData(object) {
 }
 
 if (typeof window.tpEventToDL !== 'function') {
-  window.tpEventToDL = function(eventName, campaignID, e) {
-    
-    var tpLastLevelCategory = document.querySelectorAll('.breadcrumbs li')[document.querySelectorAll('.breadcrumbs li').length-2]?.innerText.trim().replace(/['"]/g, "");
+    window.tpEventToDL = function (eventName, campaignID, e) {
 
-    
-    console.log('DY Rec', eventName, campaignID);
-    window.dataLayer = window.dataLayer || [];
-    window.dataLayer.push({
-      event: eventName,
-      campaignID: campaignID,
-      campaignCategory: tpLastLevelCategory
-    });
-    typeof DY.API === 'function' ? DY.API("event", {name: "PDP Recommendation Click"}) : '';
-    if(e === 'a2c'){
-		  typeof DY.API === 'function' ? DY.API("event", {name: "PDP Recommendation A2C"}) : '';
-	  }
-	  
-  };
+        var tpLastLevelCategory = document.querySelectorAll('.breadcrumbs li')[document.querySelectorAll('.breadcrumbs li').length - 2]?.innerText.trim().replace(/['"]/g, "");
+
+
+        console.log('DY Rec', eventName, campaignID);
+        window.dataLayer = window.dataLayer || [];
+        window.dataLayer.push({
+            event: eventName,
+            campaignID: campaignID,
+            campaignCategory: tpLastLevelCategory
+        });
+        typeof DY.API === 'function' ? DY.API("event", { name: "PDP Recommendation Click" }) : '';
+        if (e === 'a2c') {
+            typeof DY.API === 'function' ? DY.API("event", { name: "PDP Recommendation A2C" }) : '';
+        }
+
+    };
 }
 //Window variable for ab test purposes
 window.tpRecommendImp = true;
-typeof DY.API === 'function' ? DY.API("event", {name: "PDP Recommendation Impression"}) : '';
+typeof DY.API === 'function' ? DY.API("event", { name: "PDP Recommendation Impression" }) : '';
