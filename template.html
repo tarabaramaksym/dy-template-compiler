@@ -20,13 +20,41 @@
                     data-configurable-options='${configurable_options}'
                     data-child-products-mapping='${child_products_mapping}'
                     data-is-single-option='${is_single_option}'
+                    data-preblend-rgb='${preblend_rgb}'
                 >
                     <div class="dy-recommendation-product-container">
 
                         <div class="dy-recommendation-product__image-container">
                             <img class="dy-recommendation-product__image" src="${img_url}" alt="${name}">
+                            <div
+                                class="dy-preblend-rgb absolute rounded-full z-10 w-[64px] h-[64px] bottom-[20px] right-[12px] bp-desktop:w-[98px] bp-desktop:h-[98px] bp-desktop:right-[34px] bp-desktop:bottom-[46px]"
+                                style="background-color: rgb(${preblend_rgb}); display: none;">
+                            </div>
                             <div class="sale-driven-usp-elements-wrapper">
                                 <!-- Sale driven USP elements will be rendered by JavaScript -->
+                            </div>
+                        </div>
+                        <div class="dy-recommendation-product__detail_message" style="display: none;">
+                            <div class="promotion-wrapper">
+                                <span class="clock">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 15 15" fill="none" role="img">
+                                        <g clip-path="url(#clip0_11333_5899)">
+                                            <path d="M7.50008 13.5001C10.7217 13.5001 13.3334 10.8884 13.3334 7.66677C13.3334 4.44511 10.7217 1.83344 7.50008 1.83344C4.27842 1.83344 1.66675 4.44511 1.66675 7.66677C1.66675 10.8884 4.27842 13.5001 7.50008 13.5001Z" stroke="#EB001E" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                                            <path d="M7.5 4.16675V7.66675L9.83333 8.83341" stroke="#EB001E" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                                        </g>
+                                        <defs>
+                                            <clipPath id="clip0_11333_5899">
+                                                <rect width="14" height="14" fill="white" transform="translate(0.5 0.666748)"></rect>
+                                            </clipPath>
+                                        </defs>
+                                        <title>clock-red</title>
+                                    </svg>
+                                </span>
+                                <span class="valid-price-label">
+                                    <span class="mobile-text">Aktiv till</span>
+                                    <span class="desktop-text">Erbjudandet gäller tom</span>
+                                    <strong class="end-date"></strong>
+                                </span>
                             </div>
                         </div>
                         <div class="dy-recommendation-product__details">
@@ -65,7 +93,6 @@
                                                 </div>
                                             </div>
                                         </div>
-                                        <div class="dy-recommendation-product__detail_message"></div>
                                     </div>
                                 </div>
 

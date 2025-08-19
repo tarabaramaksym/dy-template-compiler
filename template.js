@@ -15,6 +15,39 @@ var slider = null;
 
 
 // Dynamic Yield Swatches Implementation
+class DySwatchStateManager {
+    constructor() {
+        this.productStates = new Map(); // productId -> { selectedValues, productIndex }
+    }
+
+    getProductState(productId) {
+        if (!this.productStates.has(productId)) {
+            this.productStates.set(productId, {
+                selectedValues: {},
+                productIndex: null
+            });
+        }
+        return this.productStates.get(productId);
+    }
+
+    updateProductState(productId, selectedValues, productIndex) {
+        const state = this.getProductState(productId);
+        state.selectedValues = { ...selectedValues };
+        state.productIndex = productIndex;
+        this.productStates.set(productId, state);
+    }
+
+    getSelectedValues(productId) {
+        return this.getProductState(productId).selectedValues;
+    }
+
+    getProductIndex(productId) {
+        return this.getProductState(productId).productIndex;
+    }
+}
+
+const swatchStateManager = new DySwatchStateManager();
+
 class DySwatchUtils {
     static mapSwatchTypeNumberToTypeCode(typeNumber) {
         switch ("" + typeNumber) {
@@ -38,14 +71,13 @@ class DySwatchUtils {
             return this.mapSwatchTypeNumberToTypeCode(config[optionId].type);
         }
 
-        // Use type of first option if specific option not found
         for (const optId in config) {
             const option = config[optId];
             if (typeof option.type !== 'undefined') {
                 return this.mapSwatchTypeNumberToTypeCode(option.type);
             }
         }
-        
+
         return "text";
     }
 
@@ -61,16 +93,16 @@ class DySwatchUtils {
 
         if (type === 'color') {
             let hexCodes = config.value.split(';').slice(0, 2);
-            
+
             if (hexCodes.length === 1) {
                 return `background-color: ${hexCodes[0]};`;
             }
-            
+
             return `background: linear-gradient(45deg, ${hexCodes[0]} 50%, ${hexCodes[1]} 50%);`;
         } else if (type === "image") {
             return `background: #ffffff url('${config.value}') no-repeat center; background-size: cover;`;
         }
-        
+
         return '';
     }
 
@@ -101,11 +133,50 @@ class DySwatchManager {
         this.productElement = productElement;
         this.data = data;
         this.baseUrl = baseUrl;
-        this.selectedValues = {};
-        this.allowedAttributeOptions = [];
-        this.productIndex = null;
+        this.productId = this.getProductId();
         this.swatchesWrapper = productElement.querySelector('.dy-swatches-wrapper');
         this.addToCartButton = productElement.querySelector('.add-to-cart');
+
+        this.syncWithSharedState();
+    }
+
+    getProductId() {
+        const parentId = this.productElement.getAttribute('data-parent-id');
+        return parentId || this.productElement.getAttribute('data-product-id') || 'unknown';
+    }
+
+    get selectedValues() {
+        return swatchStateManager.getSelectedValues(this.productId);
+    }
+
+    get productIndex() {
+        return swatchStateManager.getProductIndex(this.productId);
+    }
+
+    set selectedValues(values) {
+        swatchStateManager.updateProductState(this.productId, values, this.productIndex);
+    }
+
+    set productIndex(index) {
+        const currentValues = this.selectedValues;
+        swatchStateManager.updateProductState(this.productId, currentValues, index);
+    }
+
+    syncWithSharedState() {
+        this.updateSwatchUI();
+        this.updateAddToCartState();
+
+        if (this.productIndex) {
+            this.syncProductImage();
+        }
+    }
+
+    syncAllInstances() {
+        container.querySelectorAll('.dy-recommendation-product').forEach(productEl => {
+            if (productEl.swatchManager && productEl.swatchManager.productId === this.productId) {
+                productEl.swatchManager.syncWithSharedState();
+            }
+        });
     }
 
     render() {
@@ -258,6 +329,9 @@ class DySwatchManager {
         this.updateSwatchUI();
         this.updateGallery();
         this.updateAddToCartState();
+        
+        // Sync all instances of this product across the slider
+        this.syncAllInstances();
     }
 
     findSimpleIndex() {
@@ -331,6 +405,35 @@ class DySwatchManager {
         }
     }
 
+    syncProductImage() {
+        // Get the current product index from shared state
+        const currentProductIndex = this.productIndex;
+        if (!currentProductIndex) return;
+
+        // Fetch the image for this product index and update
+        fetch(`${this.baseUrl}/catalog/ajax/getcustomstockpricelist?product_id=${currentProductIndex}&isAjax=true`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.errors) {
+                console.warn('Image sync errors:', data.errors);
+            } else {
+                const image = data && data.medium;
+                if (image) {
+                    this.updateProductImage(image);
+                }
+            }
+        })
+        .catch(error => {
+            console.warn('Image sync failed:', error);
+        });
+    }
+
     updateAddToCartState() {
         if (!this.addToCartButton) return;
 
@@ -362,153 +465,178 @@ class DySwatchManager {
     }
 }
 
+function renderSaleDrivenUsps(productEl) {
+    const uspWrapper = productEl.querySelector('.sale-driven-usp-elements-wrapper');
+    const uspDataAttr = productEl.getAttribute('data-sale-driven-usp');
+
+    if (uspWrapper && uspDataAttr) {
+        try {
+            const uspData = JSON.parse(uspDataAttr);
+            const elements = uspData.elements || [];
+            const values = uspData.values || [];
+
+            let uspHtml = '';
+            elements.forEach((element, i) => {
+                if (values[i]) {
+                    uspHtml += `
+                        <div class="sale-driven-usp-wrapper">
+                            <div class="sale-driven-usp-element" 
+                                 data-element="balloon"
+                                 data-balloon-size="balloon-small"
+                                 data-balloon-text="${element}"
+                                 data-pdp-balloon="true"
+                                 data-plp-balloon="true">
+                                ${values[i]}
+                            </div>
+                        </div>
+                    `;
+                }
+            });
+            uspWrapper.innerHTML = uspHtml;
+        } catch (e) {
+            console.error('Error parsing USP data:', e);
+        }
+    }
+}
+
+function renderQualityIcons(productEl) {
+    const iconsWrapper = productEl.querySelector('.quality-icons');
+    const iconsDataAttr = productEl.getAttribute('data-quality-icons');
+
+    if (iconsWrapper && iconsDataAttr) {
+        try {
+            const qualityIcons = JSON.parse(iconsDataAttr);
+
+            let iconsHtml = '';
+            qualityIcons.forEach(iconData => {
+                iconsHtml += `
+                    <div class="quality-icon quality-icon--${iconData.icon}" title="${iconData.icon}">
+                        <img src="${iconData.icon_url}" alt="${iconData.icon}" />
+                    </div>
+                `;
+            });
+
+            iconsWrapper.innerHTML = iconsHtml;
+        } catch (e) {
+            console.error('Error parsing quality icons data:', e);
+        }
+    }
+}
+
+function renderOnlineAvailability(productEl) {
+    const isWebProductAttr = productEl.getAttribute('data-is-web-product');
+    const onlineAvailabilityWrapper = productEl.querySelector('.online-availability-wrapper');
+
+    if (onlineAvailabilityWrapper && isWebProductAttr === 'true') {
+        const availabilityHtml = `
+            <div class="dy-online-availability">
+                <span aria-hidden="true" class="dy-availability-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 20 21" fill="none" role="img">
+                        <g clip-path="url(#clip0_11362_5932_37)">
+                        <path d="M19.5117 14.0751C19.5117 14.0751 12.2333 10.7667 12.2075 10.7584C11.6008 10.5517 10.9425 10.7042 10.4892 11.1576C10.0358 11.6109 9.88333 12.2692 10.1208 12.9501L13.4075 20.1792C13.54 20.4718 13.8292 20.6617 14.1508 20.6676H14.1667C14.4817 20.6676 14.7708 20.4892 14.9125 20.2067L16.455 17.1217L19.54 15.5792C19.8275 15.4351 20.0067 15.1401 20.0008 14.8184C19.995 14.4976 19.805 14.2084 19.5125 14.0751H19.5117ZM15.4608 15.7551C15.3 15.8359 15.1683 15.9667 15.0883 16.1276L14.2017 17.9009L11.665 12.3376L17.2325 14.8692L15.4617 15.7542L15.4608 15.7551ZM10.76 18.9667C10.6167 18.9792 10.4725 18.9884 10.3267 18.9942C9.77 18.4434 8.31833 16.8959 7.30667 14.8342H7.91667C8.37667 14.8342 8.75 14.4617 8.75 14.0009C8.75 13.5401 8.37667 13.1676 7.91667 13.1676H6.64167C6.39917 12.3742 6.25 11.5342 6.25 10.6676C6.25 9.80092 6.4 8.96175 6.64333 8.16758H13.3575C13.4558 8.49008 13.5392 8.82008 13.6033 9.15675C13.69 9.60925 14.1275 9.90758 14.5775 9.81925C15.0292 9.73341 15.3258 9.29675 15.24 8.84508C15.1967 8.61592 15.145 8.39008 15.0875 8.16758H17.915C17.9258 8.16758 17.9375 8.16758 17.9483 8.16758C18.1975 8.95758 18.3317 9.79758 18.3317 10.6684C18.3317 10.9242 18.32 11.1767 18.2975 11.4267C18.2567 11.8851 18.5942 12.2901 19.0525 12.3317C19.5125 12.3767 19.9167 12.0351 19.9575 11.5767C19.9842 11.2776 19.9983 10.9742 19.9983 10.6684C20 5.15258 15.5142 0.666748 10 0.666748C4.48583 0.666748 0 5.15258 0 10.6667C0 16.1809 4.48583 20.6667 9.99917 20.6667C10.305 20.6667 10.6075 20.6526 10.9058 20.6259C11.3642 20.5851 11.7033 20.1809 11.6625 19.7217C11.6217 19.2642 11.2183 18.9259 10.7592 18.9659L10.76 18.9667ZM4.91 13.1676H2.08333C2.0725 13.1676 2.06167 13.1676 2.05 13.1676C1.80083 12.3776 1.66667 11.5376 1.66667 10.6676C1.66667 9.79592 1.80083 8.95591 2.05 8.16591C2.06083 8.16591 2.07167 8.16591 2.08333 8.16591H4.91C4.70583 8.96175 4.58333 9.79842 4.58333 10.6659C4.58333 11.5334 4.705 12.3701 4.91 13.1659V13.1676ZM7.31083 6.50092C8.16167 4.77008 9.32333 3.39758 10.0017 2.67758C10.6808 3.39675 11.8425 4.76675 12.6933 6.50092H7.31083ZM17.215 6.50092H14.525C13.8658 4.92925 12.9517 3.59425 12.165 2.62008C14.3142 3.19925 16.1225 4.61758 17.215 6.50092ZM7.83333 2.62008C7.04667 3.59425 6.13167 4.92925 5.47333 6.50008H2.785C3.87667 4.61675 5.68417 3.19842 7.83333 2.62008ZM2.785 14.8334H5.47333C6.13167 16.4051 7.04667 17.7392 7.83333 18.7134C5.685 18.1342 3.8775 16.7159 2.785 14.8334Z" fill="black"></path>
+                        </g>
+                        <defs>
+                        <clipPath id="clip0_11362_5932_37">
+                        <rect width="20" height="20" fill="white" transform="translate(0 0.666748)"></rect>
+                        </clipPath>
+                        </defs>
+                        <title>globe-black</title>
+                    </svg>
+                </span>
+                <span class="dy-online-availability-text">Endast online</span>
+            </div>
+        `;
+        onlineAvailabilityWrapper.innerHTML = availabilityHtml;
+    }
+}
+
+function renderEnergyLabels(productEl) {
+    const energyDataAttr = productEl.getAttribute('data-energy-data');
+    const energyWrapper = productEl.querySelector('.energy-class');
+
+    if (energyWrapper && energyDataAttr) {
+        try {
+            const energyData = JSON.parse(energyDataAttr);
+
+            if (energyData && energyData.energy_label_code) {
+                let energyHtml = '<div class="energy-label-wrapper">';
+
+                if (energyData.energy_sheet_url) {
+                    energyHtml += `<a href="${energyData.energy_sheet_url}" target="_blank" class="energy-link">`;
+                }
+
+                if (energyData.is_new_label) {
+                    energyHtml += `
+                        <div class="energy-label energy-label--new">
+                            <span class="energy-code new" data-energy-label="${energyData.energy_label_code}"></span>
+                        </div>
+                    `;
+                } else {
+                    energyHtml += `
+                        <div class="energy-label" data-energy-label="${energyData.energy_label_code}" data-energy-class="${energyData.energy_class_for_old_label}" style="display: none;">
+                            <span class="energy-code"></span>
+                        </div>
+                    `;
+                }
+
+                if (energyData.energy_sheet_url) {
+                    energyHtml += '</a>';
+                }
+
+                if (energyData.energy_pdf) {
+                    energyHtml += `
+                        <a href="${energyData.energy_pdf}" target="_blank" class="energy-pdf-link">
+                            Produktinfo
+                        </a>
+                    `;
+                }
+
+                energyHtml += '</div>';
+                energyWrapper.innerHTML = energyHtml;
+            }
+        } catch (e) {
+            console.error('Error parsing energy data:', e);
+        }
+    }
+}
+
+function renderBrokenPaintMarker(productEl) {
+    const isBrokenPaintAttr = productEl.getAttribute('data-is-broken-paint');
+    const brokenPaintMarker = productEl.querySelector('.broken-paint-marker');
+
+    if (brokenPaintMarker && isBrokenPaintAttr === 'true') {
+        brokenPaintMarker.style.display = 'flex';
+    }
+}
+
+function renderPreblendRgb(productEl) { 
+    const preblendRgb = productEl.getAttribute('data-preblend-rgb');
+    const preblendRgbWrapper = productEl.querySelector('.dy-preblend-rgb');
+
+    if (preblendRgbWrapper && preblendRgb) {
+        preblendRgbWrapper.style.display = 'block';
+    }
+}
+
+function renderDynamicContent() {
+    [].slice.call(container.querySelectorAll('.dy-recommendation-product')).forEach(function(productEl) {
+        renderSaleDrivenUsps(productEl);
+        renderQualityIcons(productEl);
+        renderOnlineAvailability(productEl);
+        renderEnergyLabels(productEl);
+        renderBrokenPaintMarker(productEl);
+        renderPreblendRgb(productEl);
+
+        renderSwatches(productEl);
+    });
+}
+
 renderDynamicContent();
 setResponsiveAttributes();
 parsePriceHtml('.rec_item_${dyVariationId} .rec_price_num');
 processEnergyLabels();
 bindAddToCart();
 hidePackageUnits();
-
-function renderDynamicContent() {
-    [].slice.call(container.querySelectorAll('.dy-recommendation-product')).forEach(function(productEl) {
-        const uspWrapper = productEl.querySelector('.sale-driven-usp-elements-wrapper');
-        const uspDataAttr = productEl.getAttribute('data-sale-driven-usp');
-
-        if (uspWrapper && uspDataAttr) {
-            try {
-                const uspData = JSON.parse(uspDataAttr);
-                const elements = uspData.elements || [];
-                const values = uspData.values || [];
-
-                let uspHtml = '';
-                elements.forEach((element, i) => {
-                    if (values[i]) {
-                        uspHtml += `
-                            <div class="sale-driven-usp-wrapper">
-                                <div class="sale-driven-usp-element" 
-                                     data-element="balloon"
-                                     data-balloon-size="balloon-small"
-                                     data-balloon-text="${element}"
-                                     data-pdp-balloon="true"
-                                     data-plp-balloon="true">
-                                    ${values[i]}
-                                </div>
-                            </div>
-                        `;
-                    }
-                });
-                uspWrapper.innerHTML = uspHtml;
-            } catch (e) {
-                console.error('Error parsing USP data:', e);
-            }
-        }
-
-        const iconsWrapper = productEl.querySelector('.quality-icons');
-        const iconsDataAttr = productEl.getAttribute('data-quality-icons');
-
-        if (iconsWrapper && iconsDataAttr) {
-            try {
-                const qualityIcons = JSON.parse(iconsDataAttr);
-
-                let iconsHtml = '';
-                qualityIcons.forEach(iconData => {
-                    iconsHtml += `
-                        <div class="quality-icon quality-icon--${iconData.icon}" title="${iconData.icon}">
-                            <img src="${iconData.icon_url}" alt="${iconData.icon}" />
-                        </div>
-                    `;
-                });
-
-                iconsWrapper.innerHTML = iconsHtml;
-            } catch (e) {
-                console.error('Error parsing quality icons data:', e);
-            }
-        }
-
-        const isWebProductAttr = productEl.getAttribute('data-is-web-product');
-        const onlineAvailabilityWrapper = productEl.querySelector('.online-availability-wrapper');
-
-        if (onlineAvailabilityWrapper && isWebProductAttr === 'true') {
-            const availabilityHtml = `
-                <div class="dy-online-availability">
-                    <span aria-hidden="true" class="dy-availability-icon">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 20 21" fill="none" role="img">
-                            <g clip-path="url(#clip0_11362_5932_37)">
-                            <path d="M19.5117 14.0751C19.5117 14.0751 12.2333 10.7667 12.2075 10.7584C11.6008 10.5517 10.9425 10.7042 10.4892 11.1576C10.0358 11.6109 9.88333 12.2692 10.1208 12.9501L13.4075 20.1792C13.54 20.4718 13.8292 20.6617 14.1508 20.6676H14.1667C14.4817 20.6676 14.7708 20.4892 14.9125 20.2067L16.455 17.1217L19.54 15.5792C19.8275 15.4351 20.0067 15.1401 20.0008 14.8184C19.995 14.4976 19.805 14.2084 19.5125 14.0751H19.5117ZM15.4608 15.7551C15.3 15.8359 15.1683 15.9667 15.0883 16.1276L14.2017 17.9009L11.665 12.3376L17.2325 14.8692L15.4617 15.7542L15.4608 15.7551ZM10.76 18.9667C10.6167 18.9792 10.4725 18.9884 10.3267 18.9942C9.77 18.4434 8.31833 16.8959 7.30667 14.8342H7.91667C8.37667 14.8342 8.75 14.4617 8.75 14.0009C8.75 13.5401 8.37667 13.1676 7.91667 13.1676H6.64167C6.39917 12.3742 6.25 11.5342 6.25 10.6676C6.25 9.80092 6.4 8.96175 6.64333 8.16758H13.3575C13.4558 8.49008 13.5392 8.82008 13.6033 9.15675C13.69 9.60925 14.1275 9.90758 14.5775 9.81925C15.0292 9.73341 15.3258 9.29675 15.24 8.84508C15.1967 8.61592 15.145 8.39008 15.0875 8.16758H17.915C17.9258 8.16758 17.9375 8.16758 17.9483 8.16758C18.1975 8.95758 18.3317 9.79758 18.3317 10.6684C18.3317 10.9242 18.32 11.1767 18.2975 11.4267C18.2567 11.8851 18.5942 12.2901 19.0525 12.3317C19.5125 12.3767 19.9167 12.0351 19.9575 11.5767C19.9842 11.2776 19.9983 10.9742 19.9983 10.6684C20 5.15258 15.5142 0.666748 10 0.666748C4.48583 0.666748 0 5.15258 0 10.6667C0 16.1809 4.48583 20.6667 9.99917 20.6667C10.305 20.6667 10.6075 20.6526 10.9058 20.6259C11.3642 20.5851 11.7033 20.1809 11.6625 19.7217C11.6217 19.2642 11.2183 18.9259 10.7592 18.9659L10.76 18.9667ZM4.91 13.1676H2.08333C2.0725 13.1676 2.06167 13.1676 2.05 13.1676C1.80083 12.3776 1.66667 11.5376 1.66667 10.6667C1.66667 9.79592 1.80083 8.95591 2.05 8.16591C2.06083 8.16591 2.07167 8.16591 2.08333 8.16591H4.91C4.70583 8.96175 4.58333 9.79842 4.58333 10.6659C4.58333 11.5334 4.705 12.3701 4.91 13.1659V13.1676ZM7.31083 6.50092C8.16167 4.77008 9.32333 3.39758 10.0017 2.67758C10.6808 3.39675 11.8425 4.76675 12.6933 6.50092H7.31083ZM17.215 6.50092H14.525C13.8658 4.92925 12.9517 3.59425 12.165 2.62008C14.3142 3.19925 16.1225 4.61758 17.215 6.50092ZM7.83333 2.62008C7.04667 3.59425 6.13167 4.92925 5.47333 6.50008H2.785C3.87667 4.61675 5.68417 3.19842 7.83333 2.62008ZM2.785 14.8334H5.47333C6.13167 16.4051 7.04667 17.7392 7.83333 18.7134C5.685 18.1342 3.8775 16.7159 2.785 14.8334Z" fill="black"></path>
-                            </g>
-                            <defs>
-                            <clipPath id="clip0_11362_5932_37">
-                            <rect width="20" height="20" fill="white" transform="translate(0 0.666748)"></rect>
-                            </clipPath>
-                            </defs>
-                            <title>globe-black</title>
-                        </svg>
-                    </span>
-                    <span class="dy-online-availability-text">Endast online</span>
-                </div>
-            `;
-            onlineAvailabilityWrapper.innerHTML = availabilityHtml;
-        }
-
-        const energyDataAttr = productEl.getAttribute('data-energy-data');
-        const energyWrapper = productEl.querySelector('.energy-class');
-
-        if (energyWrapper && energyDataAttr) {
-            try {
-                const energyData = JSON.parse(energyDataAttr);
-
-                if (energyData && energyData.energy_label_code) {
-                    let energyHtml = '<div class="energy-label-wrapper">';
-
-                    if (energyData.energy_sheet_url) {
-                        energyHtml += `<a href="${energyData.energy_sheet_url}" target="_blank" class="energy-link">`;
-                    }
-
-                    if (energyData.is_new_label) {
-                        energyHtml += `
-                            <div class="energy-label energy-label--new">
-                                <span class="energy-code new" data-energy-label="${energyData.energy_label_code}"></span>
-                            </div>
-                        `;
-                    } else {
-                        energyHtml += `
-                            <div class="energy-label" data-energy-label="${energyData.energy_label_code}" data-energy-class="${energyData.energy_class_for_old_label}" style="display: none;">
-                                <span class="energy-code"></span>
-                            </div>
-                        `;
-                    }
-
-                    if (energyData.energy_sheet_url) {
-                        energyHtml += '</a>';
-                    }
-
-                    if (energyData.energy_pdf) {
-                        energyHtml += `
-                            <a href="${energyData.energy_pdf}" target="_blank" class="energy-pdf-link">
-                                Produktinfo
-                            </a>
-                        `;
-                    }
-
-                    energyHtml += '</div>';
-                    energyWrapper.innerHTML = energyHtml;
-                }
-            } catch (e) {
-                console.error('Error parsing energy data:', e);
-            }
-        }
-
-        const isBrokenPaintAttr = productEl.getAttribute('data-is-broken-paint');
-        const brokenPaintMarker = productEl.querySelector('.broken-paint-marker');
-
-        if (brokenPaintMarker && isBrokenPaintAttr === 'true') {
-            brokenPaintMarker.style.display = 'flex';
-        }
-
-        // Render swatches for this product
-        renderSwatches(productEl);
-    });
-}
 
 function renderSwatches(productElement) {
     try {
@@ -812,7 +940,20 @@ function getSliderOptions() {
         },
         slideClass: 'dy-recommendation-product',
         wrapperClass: 'dy-recommendations__slider-wrapper',
-        containerModifierClass: 'dy-recommendations__slider-'
+        containerModifierClass: 'dy-recommendations__slider-',
+        on: {
+            init: function() {
+                setTimeout(() => {
+                    container.querySelectorAll('.dy-recommendation-product').forEach(productEl => {
+                        if (!productEl.swatchManager) {
+                            renderSwatches(productEl);
+                        } else {
+                            productEl.swatchManager.syncWithSharedState();
+                        }
+                    });
+                }, 100);
+            }
+        }
     };
 }
 
@@ -878,21 +1019,18 @@ async function fetchPrices(shopId, skus, customerType) {
             })
         });
 
-        console.log('Fetch response status:', rawResponse.status);
-        console.log('Fetch response headers:', Object.fromEntries(rawResponse.headers.entries()));
-
         if (!rawResponse.ok) {
             throw new Error(`HTTP error! status: ${rawResponse.status}`);
         }
 
         const responseText = await rawResponse.text();
-        console.log('Raw response text:', responseText.substring(0, 200) + '...');
 
         if (!responseText) {
             throw new Error('Empty response received');
         }
 
         const response = JSON.parse(responseText);
+
         return response;
     } catch (error) {
         console.error('fetchPrices error:', error);
@@ -931,8 +1069,10 @@ function updatePrices(nodeList, dynamicPrices) {
 
                         if (dynamicPrice.discount_end_date) {
                             const productMessage = itemWrapper.querySelector('.dy-recommendation-product__detail_message');
+                            const endDateElement = productMessage.querySelector('.end-date');
+                            
                             productMessage.style.display = 'flex';
-                            productMessage.innerHTML = 'Priset gäller tom ' + dynamicPrice.discount_end_date;
+                            endDateElement.textContent = dynamicPrice.discount_end_date;
                         }
                     }
                 }
@@ -1003,19 +1143,15 @@ function handleAddToCart(button) {
             qty: 1
         };
 
-    // Check if product has swatches and get selected product data
     const selectedProductId = button.getAttribute('data-selected-product-id');
-    const selectedSku = button.getAttribute('data-selected-sku');
-    
+
     if (selectedProductId) {
-        // Use selected child product for swatches
         data.product = selectedProductId;
         data.item = selectedProductId;
-        
-        // Get swatch manager to get selected attribute values
+
         const swatchManager = product.swatchManager;
+
         if (swatchManager && swatchManager.selectedValues) {
-            // Add selected attribute values to form data
             Object.entries(swatchManager.selectedValues).forEach(([attributeId, optionId]) => {
                 data['super_attribute[' + attributeId + ']'] = optionId;
             });
@@ -1100,9 +1236,7 @@ function getFormData(object) {
 
 if (typeof window.tpEventToDL !== 'function') {
     window.tpEventToDL = function (eventName, campaignID, e) {
-
         var tpLastLevelCategory = document.querySelectorAll('.breadcrumbs li')[document.querySelectorAll('.breadcrumbs li').length - 2]?.innerText.trim().replace(/['"]/g, "");
-
 
         console.log('DY Rec', eventName, campaignID);
         window.dataLayer = window.dataLayer || [];
