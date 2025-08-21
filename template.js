@@ -695,33 +695,10 @@ function processEnergyLabels() {
 }
 
 function setUspText() {
-    let textMap = {
-        'Customer Favourite': 'Kund-Favorit',
-        'Check out the price': 'Spana in priset',
-        'X for': 'för',
-        'X for Y': 'för',
-        'New': 'Nyhet',
-        'Good': 'Bra',
-        'Better': 'Bättre',
-        'Best': 'Bäst',
-        'Smart Choice': 'Smart Val',
-        'Greener Choice': 'Ett grönare val',
-        'Available Online': 'Endast online'
-    };
-
-    let mobileMap = {
-        'Customer Favourite': 'Kundfavorit',
-    };
-
     [].slice.call(container.querySelectorAll('.product-usp-element')).forEach(function (balloon) {
         // Default case
         let result = balloon.getAttribute('data-usp'),
             useMap = true;
-
-        if (!result || result === 'None' || result === 'Ingen' || result === 'usp_element' || result === 'none') {
-            return;
-        }
-
 
         // Percent discount
         if (result === 'percent-discount' || result === 'Percent Discount (x%)') {
@@ -729,43 +706,9 @@ function setUspText() {
             useMap = false;
             balloon.style.display = 'flex';
             balloon.classList.add('percent-discount');
+
+            balloon.innerHTML = balloon.innerHTML + '<span class="bubble-text">' + result + '</span>';
         }
-
-        // X for
-        if (result === 'x-for' || result === 'X For') {
-            result = '<strong>' + balloon.getAttribute('data-x-value') + '</strong>' + ' ' + textMap['X For'];
-            useMap = false;
-        }
-
-        // X for Y
-        if (result === 'x-for-y' || result === 'X for Y') {
-            result = '<strong>' + balloon.getAttribute('data-x-value') + '</strong>' + ' ' + textMap['X for Y'] + ' ' + '<strong>' + balloon.getAttribute('data-y-value') + '</strong>';
-            useMap = false;
-        }
-
-        // Fully custom balloon
-        if (result === 'custom' || result === 'Custom Text') {
-            result = balloon.getAttribute('data-custom-text');
-            useMap = false;
-        }
-
-        if (useMap) {
-            if (mobileMap[result]) {
-                balloon.innerHTML = balloon.innerHTML + '<span class="bubble-text bubble-text-mobile">' + mobileMap[result] + '</span>';
-            }
-
-            result = textMap[result];
-        }
-
-        balloon.style.display = 'flex';
-
-        //Avoid displaying "undefined"
-        if (!result || result === 'undefined' || result === 'UNDEFINED') {
-            balloon.style.display = 'none';
-            return;
-        }
-
-        balloon.innerHTML = balloon.innerHTML + '<span class="bubble-text">' + result + '</span>';
     });
     //DY event for content loaded in PDP recommendation
     typeof DY.API === 'function' ? DY.API("event", { name: "PDP Rec Updated" }) : '';
@@ -1014,11 +957,16 @@ function updatePrices(nodeList, dynamicPrices) {
     nodeList.forEach((numberNode) => {
         const number = numberNode;
         const itemWrapper = number.closest('.rec_item_${dyVariationId}');
+
         if (dynamicPrices && Array.isArray(dynamicPrices)) {
             const sku = number.getAttribute('data-dy-sku');
             const dynamicPrice = dynamicPrices.find((price) => price.sku === sku);
             if (dynamicPrice) {
                 updatePriceElement(dynamicPrice.final_price, number);
+
+                // Update ARIA label for current price
+                const currentPriceLabel = 'Price ' + formatPriceForAria(dynamicPrice.final_price);
+                number.setAttribute('aria-label', currentPriceLabel);
 
                 const isConfigurable = !(sku in dynamicPrice.availability);
                 if (!isConfigurable && !dynamicPrice.availability[sku]) {
@@ -1034,6 +982,10 @@ function updatePrices(nodeList, dynamicPrices) {
                         const productUspElem = itemWrapper.querySelector('.product-usp-element');
                         number.classList.add('visible');
                         updatePriceElement(dynamicPrice.regular_price, number);
+                        
+                        const oldPriceLabel = 'Original Price ' + formatPriceForAria(dynamicPrice.regular_price);
+                        number.setAttribute('aria-label', oldPriceLabel);
+                        
                         productUspElem.setAttribute('data-usp', 'percent-discount');
                         productUspElem.setAttribute('data-x-value', dynamicPrice.discount_percentage);
 
@@ -1059,8 +1011,23 @@ function updatePrices(nodeList, dynamicPrices) {
 
 }
 
+// Helper function to format price for ARIA labels
+function formatPriceForAria(price) {
+    if (typeof price === 'number') {
+        return price.toFixed(2);
+    }
+    return price.toString();
+}
+
 function updatePriceElement(price, elementNode) {
     elementNode.dataset.price = price;
+    
+    // Update ARIA label when price changes
+    const isOldPrice = elementNode.getAttribute('data-price-old');
+    const priceLabel = isOldPrice ? 
+        'Original Price ' + formatPriceForAria(price) : 
+        'Price ' + formatPriceForAria(price);
+    elementNode.setAttribute('aria-label', priceLabel);
 }
 
 function getCookie(name) {
@@ -1086,7 +1053,6 @@ function bindAddToCart() {
 
     forms.forEach(form => {
         form.addEventListener('submit', function(event) {
-            console.log('submit');
             event.stopPropagation();
             event.preventDefault();
 
@@ -1192,7 +1158,6 @@ async function doFetch(targetUrl, formData, button) {
 
         button.innerHTML = 'Lägg i varukorg';
     }).catch(function (error) {
-        console.log('error');
         console.log(error);
     });
 }

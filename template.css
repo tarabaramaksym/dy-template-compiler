@@ -122,13 +122,22 @@
 /* Promotion Message Styles */
 #dy-recommendations-${dyVariationId} .promotion-wrapper {
     width: 100%;
-    display: inline-flex;
+    display: flex;
     padding: 5px;
     color: #EB001E;
     background-color: #FDF2F2;
-    margin-bottom: 10px;
     justify-content: center;
     align-items: center;
+    font-weight: bold;
+    font-size: 12px;
+    text-align: center;
+    font-family: Trim-Medium,Arial,sans-serif !important;
+}
+
+@media (min-width: 1024px) {
+    #dy-recommendations-${dyVariationId} .promotion-wrapper {
+        font-size: 14px;
+    }
 }
 
 #dy-recommendations-${dyVariationId} .promotion-wrapper .clock {
@@ -146,28 +155,26 @@
 }
 
 #dy-recommendations-${dyVariationId} .promotion-wrapper .valid-price-label {
-    font-size: 12px;
-    font-family: 'F Trim Medium', sans-serif;
+    font-size: inherit;
+    font-family: Trim-Medium,Arial,sans-serif !important;
     display: flex;
     align-items: center;
 }
 
 #dy-recommendations-${dyVariationId} .promotion-wrapper .mobile-text {
     display: inline;
+    margin-right: 2px;
 }
 
 #dy-recommendations-${dyVariationId} .promotion-wrapper .desktop-text {
     display: none;
+    margin-right: 2px;
 }
 
 @media (min-width: 1024px) {
     #dy-recommendations-${dyVariationId} .promotion-wrapper .clock {
         width: 12px;
         height: 12px;
-    }
-    
-    #dy-recommendations-${dyVariationId} .promotion-wrapper .valid-price-label {
-        font-size: 14px;
     }
     
     #dy-recommendations-${dyVariationId} .promotion-wrapper .mobile-text {

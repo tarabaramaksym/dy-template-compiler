@@ -27,10 +27,20 @@
 
                         <a class="dy-recommendation-product__image-container" href="${url}" tabindex="-1">
                             <img class="dy-recommendation-product__image" src="${img_url}" alt="${name}">
+
+                            <div class="product-usp-wrapper">
+                                <div class="product-usp-element" data-usp="${usp_element}" data-x-value="${usp_element_x_value}" data-y-value="${usp_element_y_value}" data-custom-text="${usp_element_custom}">
+                                    <svg width="103" height="114" viewBox="0 0 103 114" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M103 51.7032C103 37.9907 97.5742 24.8397 87.9161 15.1435C78.258 5.44728 65.1588 0 51.5003 0C49.8208 0.000883844 48.1425 0.0875821 46.4718 0.259758L9.4388 21.9326C4.33762 29.1727 1.1807 37.6103 0.272473 46.4316C-0.635752 55.253 0.735365 64.1604 4.25359 72.295C7.77182 80.4296 13.3185 87.5168 20.3586 92.8732C27.3988 98.2296 35.6949 101.674 44.4469 102.876L46.7643 114L75.1915 97.7143H75.0003C83.436 93.3784 90.5147 86.7873 95.4555 78.6682C100.396 70.5491 103.007 61.2176 103 51.7032Z" fill="#E31E36"></path>
+                                    </svg>
+                                </div>
+                            </div>
+
                             <div
                                 class="dy-preblend-rgb absolute rounded-full z-10 w-[64px] h-[64px] bottom-[20px] right-[12px] bp-desktop:w-[98px] bp-desktop:h-[98px] bp-desktop:right-[34px] bp-desktop:bottom-[46px]"
                                 style="background-color: rgb(${preblend_rgb}); display: none;">
                             </div>
+
                             <div class="sale-driven-usp-elements-wrapper">
                                 <!-- Sale driven USP elements will be rendered by JavaScript -->
                             </div>
@@ -72,25 +82,25 @@
                             <div class="bottom-wrapper">
                                 <div class="prices">
                                     <div class="price-box regular-price">
-                                        <div class="dy-recommendation-product__detail dy-recommendation-product__detail--price rec_price_num" data-price="${price}" data-dy-dynamic-price="${dynamic_price}" data-dy-sku="${sku}" data-sales-price="${sales_price}">
+                                        <div class="dy-recommendation-product__detail dy-recommendation-product__detail--price rec_price_num" data-price="${price}" data-dy-dynamic-price="${dynamic_price}" data-dy-sku="${sku}" data-sales-price="${sales_price}" role="textbox" aria-live="polite">
                                             <div class="price-left">
-                                                <span class="integer"></span>
-                                                <span class="decimal"></span>
+                                                <span class="integer" aria-hidden="true"></span>
+                                                <span class="decimal" aria-hidden="true"></span>
                                             </div>
                                             <div class="price-right">
                                                 <div class="currency-package">
-                                                    <span class="rec_price_currency">${Currency Symbol}</span>
+                                                    <span class="rec_price_currency" aria-hidden="true">${Currency Symbol}</span>
                                                 </div>
                                             </div>
                                         </div>
-                                        <div class="dy-recommendation-product__detail dy-recommendation-product__detail--price price_old rec_price_num" data-price="${price}" data-price-old="1" data-dy-dynamic-price="${dynamic_price}" data-dy-sku="${sku}" data-sales-price="${sales_price}">
+                                        <div class="dy-recommendation-product__detail dy-recommendation-product__detail--price price_old rec_price_num" data-price="${price}" data-price-old="1" data-dy-dynamic-price="${dynamic_price}" data-dy-sku="${sku}" data-sales-price="${sales_price}" role="textbox" aria-live="polite">
                                             <div class="price-left">
-                                                <span class="integer"></span>
-                                                <span class="decimal"></span>
+                                                <span class="integer" aria-hidden="true"></span>
+                                                <span class="decimal" aria-hidden="true"></span>
                                             </div>
                                             <div class="price-right">
                                                 <div class="currency-package">
-                                                    <span class="rec_price_currency">${Currency Symbol}</span>
+                                                    <span class="rec_price_currency" aria-hidden="true">${Currency Symbol}</span>
                                                 </div>
                                             </div>
                                         </div>
