@@ -142,7 +142,10 @@ class DySwatchManager {
 
     getProductId() {
         const parentId = this.productElement.getAttribute('data-parent-id');
-        return parentId || this.productElement.getAttribute('data-product-id') || 'unknown';
+        const productId = this.productElement.getAttribute('data-product-id');
+        const elementIndex = Array.from(this.productElement.parentNode.children).indexOf(this.productElement);
+        
+        return `${parentId || productId || 'unknown'}_${elementIndex}`;
     }
 
     get selectedValues() {
@@ -172,8 +175,19 @@ class DySwatchManager {
     }
 
     syncAllInstances() {
-        container.querySelectorAll('.dy-recommendation-product').forEach(productEl => {
-            if (productEl.swatchManager && productEl.swatchManager.productId === this.productId) {
+        const currentSlider = this.productElement.closest('.dy-recommendations__slider');
+
+        if (!currentSlider) {
+            return
+        };
+
+        const originalProduct = this.productElement;
+        const allProducts = currentSlider.querySelectorAll('.dy-recommendation-product');
+
+        allProducts.forEach(productEl => {
+            if (productEl !== originalProduct && 
+                productEl.swatchManager && 
+                productEl.getAttribute('data-parent-id') === originalProduct.getAttribute('data-parent-id')) {
                 productEl.swatchManager.syncWithSharedState();
             }
         });
