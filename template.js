@@ -571,7 +571,7 @@ function renderEnergyLabels(productEl) {
 
                 if (energyData.energy_pdf) {
                     energyHtml += '<a onclick="event.stopPropagation();" href="' + energyData.energy_pdf + '" target="_blank" class="energy-pdf-link gtm-exclude">' +
-                        'Produktinfo' +
+                        __('Product info') +
                     '</a>';
                 }
 
@@ -1135,7 +1135,7 @@ function handleAddToCart(button) {
 }
 
 async function doFetch(targetUrl, formData, button) {
-    button.innerHTML = 'Lägger till...';
+    button.innerHTML = __('Adding...');
 
     const rawResponse = await fetch(targetUrl, {
         method: 'POST',
@@ -1170,7 +1170,7 @@ async function doFetch(targetUrl, formData, button) {
             });
         }
 
-        button.innerHTML = 'Lägg i varukorg';
+        button.innerHTML = __('Add to cart');
     }).catch(function (error) {
         console.log(error);
     });

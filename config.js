@@ -1,4 +1,7 @@
 module.exports = {
+  // Locale setting for internationalization
+  locale: 'no', // 'en', 'sv', 'dk', 'fi', 'no'
+  
   // Template configuration variables
   dyVariationId: 'test-123',
   dyTagId: 'recommendation-widget-001',
@@ -23,7 +26,7 @@ module.exports = {
   'Autoplay': '0',
   'Autoplay Speed': '3',
   'Scroll Behavior': 'slide', // 'slide' or 'page'
-  'Infinite Scroll': '1',
+  'Infinite Scroll': '0',
   
   // Visibility settings
   'Visibility on Desktop': '1',
@@ -43,7 +46,7 @@ module.exports = {
   'Product Name Font Size': '14',
   'Product Name Color': '#333333',
   'Product Price Font Size': '16',
-  'Product Price Color': '#E31E36',
+  'Product Price Color': 'black',
   'Product Price': 'font-weight: bold;',
   
   // Arrow Controls
