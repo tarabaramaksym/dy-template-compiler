@@ -12,16 +12,7 @@
                     href="${url}"
                     data-dy-sku="${sku}"
                     data-parent-id="${parent-id}"
-                    data-sale-driven-usp='${sale_driven_usp_data}'
-                    data-quality-icons='${quality_icons_data}'
-                    data-is-web-product='${isWebProduct}'
-                    data-energy-data='${energy_label_data}'
-                    data-is-broken-paint='${is_broken_paint}'
-                    data-swatches-config='${swatches_config}'
-                    data-configurable-options='${configurable_options}'
-                    data-child-products-mapping='${child_products_mapping}'
-                    data-is-single-option='${is_single_option}'
-                    data-preblend-rgb='${preblend_rgb}'
+                    data-product-id="${id}"
                 >
                     <form class="dy-recommendation-product-container">
 
@@ -38,7 +29,7 @@
 
                             <div
                                 class="dy-preblend-rgb absolute rounded-full z-10 w-[64px] h-[64px] bottom-[20px] right-[12px] bp-desktop:w-[98px] bp-desktop:h-[98px] bp-desktop:right-[34px] bp-desktop:bottom-[46px]"
-                                style="background-color: rgb(${preblend_rgb}); display: none;">
+                                style="display: none;">
                             </div>
 
                             <div class="sale-driven-usp-elements-wrapper">
@@ -71,13 +62,13 @@
                         <div class="dy-recommendation-product__details">
                             <div class="dy-recommendation-product__top__wrapper">
                                 <div class="brand"><p>${brand}</p></div>
-                                <div class="testfreaks-item" data-family-id="${sku}">***</div>
+                                <div class="testfreaks-item" data-family-id="74281"></div>
                             </div>
                             <div class="name">
                                 <a class="dy-recommendation-product__detail dy-recommendation-product__detail--name" href="${url}">${name}</a>
                             </div>
                             <div class="description">
-                                <p class="dy-recommendation-product__detail dy-recommendation-product__detail--description">${description}</p>
+                                <p class="dy-recommendation-product__detail dy-recommendation-product__detail--description"></p>
                             </div>
 
                             <div class="bottom-wrapper">
@@ -128,7 +119,7 @@
                                 </div>
 
                                 <div class="dy-swatches-wrapper">
-                                <!-- Swatches will be rendered here by JavaScript -->
+                                    <!-- Swatches will be rendered here by JavaScript -->
                                 </div>
 
                                 <div class="icon-wrapper">

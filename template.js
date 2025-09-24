@@ -5,14 +5,14 @@ var INJECTED_PRODUCTS = [].slice.call(container.querySelectorAll('.dy-recommenda
 let itemCount = 0;
 
 // Direct API endpoint 
-const baseUrl = window.location.origin;
+const isLocal = true;
+const baseUrl = isLocal ? 'https://local.bmx2.com' : window.location.origin;
 const endpoint = baseUrl + '/rest/V1/bmx_products/getProductDataByShop';
-const token = atob('QmVhcmVyIGVoZG41ZWVvdDc2bHIyMmp1MWR1ZnVnMG16OGNrYXlo');
-
+const token = atob(isLocal ? 'QmVhcmVyIHEyZXlrcXo2dnYzY2Iyemg5Z2Mydm96cDlwMW4zanpk' : 'QmVhcmVyIDZ1bngyb3I5OG9jbHF3bndsdjFzcjN2MWp2eDcwY3Ry');
 const addToCartBaseUrl = baseUrl + '/checkout/cart/add/';
 
-var slider = null;
 
+var slider = null;
 
 // Dynamic Yield Swatches Implementation
 class DySwatchStateManager {
@@ -92,7 +92,7 @@ class DySwatchUtils {
         if (!config) return '';
 
         if (type === 'color') {
-            let hexCodes = config.value.split(';').slice(0, 2);
+            let hexCodes = config.value ? config.value.split(';').slice(0, 2) : ['white'];
 
             if (hexCodes.length === 1) {
                 return 'background-color:' + hexCodes[0];
@@ -144,8 +144,8 @@ class DySwatchManager {
         const parentId = this.productElement.getAttribute('data-parent-id');
         const productId = this.productElement.getAttribute('data-product-id');
         const elementIndex = Array.from(this.productElement.parentNode.children).indexOf(this.productElement);
-        
-        return `${parentId || productId || 'unknown'}_${elementIndex}`;
+
+        return (parentId || productId || 'unknown') + '_' + elementIndex;
     }
 
     get selectedValues() {
@@ -344,25 +344,23 @@ class DySwatchManager {
         this.updateSwatchUI();
         this.updateGallery();
         this.updateAddToCartState();
-        
-        // Sync all instances of this product across the slider
+
         this.syncAllInstances();
     }
 
     findSimpleIndex() {
-        const productIndexes = this.data.configurableOptions.index;
+        this.productIndex = this.data.childProductsMapping.find(childProduct => {
+            const childAttributeValues = childProduct.attribute_values;
 
-        this.productIndex = Object.keys(productIndexes).find(productIndex => {
-            const productCandidateOptions = productIndexes[productIndex];
+            for (const selectedAttributeId in this.selectedValues) {
+                if (!childAttributeValues[selectedAttributeId] || 
+                    childAttributeValues[selectedAttributeId] != this.selectedValues[selectedAttributeId]) {
 
-            for (const productOption in productCandidateOptions) {
-                if (!this.selectedValues[productOption] || 
-                    this.selectedValues[productOption] != productCandidateOptions[productOption]) {
                     return false;
                 }
             }
             return true;
-        });
+        })?.child_id || null;
     }
 
     updateSwatchUI() {
@@ -390,7 +388,7 @@ class DySwatchManager {
 
         const productId = this.productIndex;
 
-        fetch(this.baseUrl + '/catalog/ajax/getcustomstockpricelist?product_id=' + productId + '&isAjax=true', {
+        fetch(this.baseUrl + '/swatches/ajax/media/?product_id=' + productId + '&isAjax=true', {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
@@ -426,7 +424,7 @@ class DySwatchManager {
         if (!currentProductIndex) return;
 
         // Fetch the image for this product index and update
-        fetch(this.baseUrl + '/catalog/ajax/getcustomstockpricelist?product_id=' + currentProductIndex + '&isAjax=true', {
+        fetch(this.baseUrl + '/catalog/ajax/gcspl?product_id=' + currentProductIndex + '&isAjax=true', {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
@@ -450,10 +448,12 @@ class DySwatchManager {
     }
 
     updateAddToCartState() {
-        if (!this.addToCartButton) return;
+        if (!this.addToCartButton) {
+            return
+        };
 
         const selectedProduct = this.getSelectedChildProduct();
-        
+
         if (!selectedProduct) {
             this.addToCartButton.removeAttribute('data-selected-product-id');
             this.addToCartButton.removeAttribute('data-selected-sku');
@@ -476,13 +476,11 @@ class DySwatchManager {
     }
 }
 
-function renderSaleDrivenUsps(productEl) {
+function renderSaleDrivenUsps(productEl, uspData) {
     const uspWrapper = productEl.querySelector('.sale-driven-usp-elements-wrapper');
-    const uspDataAttr = productEl.getAttribute('data-sale-driven-usp');
 
-    if (uspWrapper && uspDataAttr) {
+    if (uspWrapper && uspData) {
         try {
-            const uspData = JSON.parse(uspDataAttr);
             const elements = uspData.elements || [];
             const values = uspData.values || [];
 
@@ -508,14 +506,11 @@ function renderSaleDrivenUsps(productEl) {
     }
 }
 
-function renderQualityIcons(productEl) {
+function renderQualityIcons(productEl, qualityIcons) {
     const iconsWrapper = productEl.querySelector('.quality-icons');
-    const iconsDataAttr = productEl.getAttribute('data-quality-icons');
 
-    if (iconsWrapper && iconsDataAttr) {
+    if (iconsWrapper && qualityIcons) {
         try {
-            const qualityIcons = JSON.parse(iconsDataAttr);
-
             let iconsHtml = '';
 
             qualityIcons.forEach(iconData => {
@@ -531,23 +526,18 @@ function renderQualityIcons(productEl) {
     }
 }
 
-function renderOnlineAvailability(productEl) {
-    const isWebProductAttr = productEl.getAttribute('data-is-web-product');
+function renderOnlineAvailability(productEl, onlineAvailability) {
     const onlineAvailabilityWrapper = productEl.querySelector('.online-availability-wrapper');
-
-    if (onlineAvailabilityWrapper && isWebProductAttr === 'true') {
+    if (onlineAvailabilityWrapper && onlineAvailability) {
         onlineAvailabilityWrapper.style.display = 'block';
     }
 }
 
-function renderEnergyLabels(productEl) {
-    const energyDataAttr = productEl.getAttribute('data-energy-data');
+function renderEnergyLabels(productEl, energyData) {
     const energyWrapper = productEl.querySelector('.energy-class');
 
-    if (energyWrapper && energyDataAttr) {
+    if (energyWrapper && energyData) {
         try {
-            const energyData = JSON.parse(energyDataAttr);
-
             if (energyData && energyData.energy_label_code) {
                 let energyHtml = '<div class="energy-label-wrapper">';
 
@@ -560,7 +550,7 @@ function renderEnergyLabels(productEl) {
                         '<span class="energy-code gtm-exclude new" data-energy-label="' + energyData.energy_label_code + '"></span>' +
                     '</div>';
                 } else {
-                    energyHtml += '<div class="energy-label gtm-exclude" data-energy-label="' + energyData.energy_label_code + '" data-energy-class="' + energyData.energy_class_for_old_label + '" style="display: none;">' +
+                    energyHtml += '<div class="energy-label gtm-exclude" data-energy-label="' + energyData.energy_label_code + '" data-energy-class="' + energyData.energy_class_for_old_label + '">' +
                         '<span class="energy-code"></span>' +
                     '</div>';
                 }
@@ -584,55 +574,100 @@ function renderEnergyLabels(productEl) {
     }
 }
 
-function renderBrokenPaintMarker(productEl) {
-    const isBrokenPaintAttr = productEl.getAttribute('data-is-broken-paint');
+function renderBrokenPaintMarker(productEl, brokenPaint) {
     const brokenPaintMarker = productEl.querySelector('.broken-paint-marker');
 
-    if (brokenPaintMarker && isBrokenPaintAttr === 'true') {
+    if (brokenPaintMarker && brokenPaint) {
         brokenPaintMarker.style.display = 'flex';
     }
 }
 
-function renderPreblendRgb(productEl) {
-    const preblendRgb = productEl.getAttribute('data-preblend-rgb');
+function renderPreblendRgb(productEl, preblendRgb) {
     const preblendRgbWrapper = productEl.querySelector('.dy-preblend-rgb');
 
     if (preblendRgbWrapper && preblendRgb) {
         preblendRgbWrapper.style.display = 'block';
+        preblendRgbWrapper.style.background = 'rgb(' + preblendRgb + ')';
     }
 }
 
-function renderDynamicContent() {
-    [].slice.call(container.querySelectorAll('.dy-recommendation-product')).forEach(function(productEl) {
-        renderSaleDrivenUsps(productEl);
-        renderQualityIcons(productEl);
-        renderOnlineAvailability(productEl);
-        renderEnergyLabels(productEl);
-        renderBrokenPaintMarker(productEl);
-        renderPreblendRgb(productEl);
+function renderDescription(productEl, shortDescription) {
+    const descriptionElem = productEl.querySelector('.description > p');
 
-        renderSwatches(productEl);
-    });
+    if (descriptionElem && shortDescription) {
+        descriptionElem.innerHTML = shortDescription;
+    }
+}
+
+function setReviews(productEl, parentId) {
+    const reviewsElem = productEl.querySelector('.testfreaks-item');
+
+    if (reviewsElem && parentId) {
+        reviewsElem.setAttribute('data-family-id', parentId);
+    }
+}
+
+function collectAllSkus() {
+    const products = container.querySelectorAll('.dy-recommendation-product');
+
+    return Array.from(products).map(product => product.getAttribute('data-dy-sku')).filter(Boolean);
+}
+
+function renderAllDynamicContent(productEl, productData) {
+    setReviews(productEl, productData.parent_id);
+    renderSaleDrivenUsps(productEl, productData.usp_sale_driven_data);
+    renderQualityIcons(productEl, productData.quality_icons);
+    renderOnlineAvailability(productEl, productData.is_web_product);
+    renderEnergyLabels(productEl, productData.energy_label_data);
+    renderBrokenPaintMarker(productEl, productData.is_broken_paint);
+    renderPreblendRgb(productEl, productData.preblend_rgb);
+    renderSwatches(productEl, productData);
+    renderDescription(productEl, productData.short_description);
+    processEnergyLabels();
+}
+
+async function renderDynamicContent() {
+    const allSkus = collectAllSkus();
+
+    if (allSkus.length === 0) {
+        return
+    };
+
+    try {
+        const response = await fetchPrices(false, allSkus, 1);
+
+        response.forEach(productData => {
+            const productEl = container.querySelector('[data-dy-sku="' + productData.sku + '"]');
+
+            if (productEl) {
+                renderAllDynamicContent(productEl, productData);
+            }
+        });
+    } catch (error) {
+        console.error('renderDynamicContentBulk error:', error);
+    }
 }
 
 renderDynamicContent();
 setResponsiveAttributes();
 parsePriceHtml('.rec_item_${dyVariationId} .rec_price_num');
-processEnergyLabels();
 bindAddToCart();
 hidePackageUnits();
 
-function renderSwatches(productElement) {
+function renderSwatches(productElement, apiData) {
+    if (!apiData) {
+        return;
+    }
+
+    const swatchesConfig = apiData.swatches_config;
+    const configurableOptions = apiData.configurable_options;
+    const childProductsMapping = apiData.child_products_mapping;
+
+    if (!swatchesConfig || !configurableOptions || !childProductsMapping) {
+        return;
+    }
+
     try {
-        const swatchesConfig = JSON.parse(productElement.dataset.swatchesConfig || '{}');
-        const configurableOptions = JSON.parse(productElement.dataset.configurableOptions || '{}');
-        const childProductsMapping = JSON.parse(productElement.dataset.childProductsMapping || '[]');
-        const isSingleOption = productElement.dataset.isSingleOption == 'true';
-
-        if (Object.keys(swatchesConfig).length === 0 || !isSingleOption) {
-            return;
-        }
-
         const swatchManager = new DySwatchManager(productElement, baseUrl, {
             swatchesConfig,
             configurableOptions,
@@ -710,7 +745,6 @@ function processEnergyLabels() {
 
 function setUspText() {
     [].slice.call(container.querySelectorAll('.product-usp-element')).forEach(function (balloon) {
-        // Default case
         let result = balloon.getAttribute('data-usp'),
             useMap = true;
 
@@ -724,6 +758,7 @@ function setUspText() {
             balloon.innerHTML = balloon.innerHTML + '<span class="bubble-text">' + result + '</span>';
         }
     });
+
     //DY event for content loaded in PDP recommendation
     typeof DY.API === 'function' ? DY.API("event", { name: "PDP Rec Updated" }) : '';
 }
@@ -872,9 +907,7 @@ function getSliderOptions() {
             init: function() {
                 setTimeout(() => {
                     container.querySelectorAll('.dy-recommendation-product').forEach(productEl => {
-                        if (!productEl.swatchManager) {
-                            renderSwatches(productEl);
-                        } else {
+                        if (productEl.swatchManager) {
                             productEl.swatchManager.syncWithSharedState();
                         }
                     });
@@ -934,7 +967,8 @@ async function fetchPrices(shopId, skus, customerType) {
     const headers = {
         Accept: 'application/json',
         'Content-Type': 'application/json',
-        Authorization: token
+        Authorization: token,
+        Referer: baseUrl
     };
 
     try {
@@ -942,7 +976,7 @@ async function fetchPrices(shopId, skus, customerType) {
             method: 'POST',
             headers: headers,
             body: JSON.stringify({
-                shop: shopId || false, skus, customer_type: customerType, country: 'SE'
+                shop: shopId || false, skus, customer_type: customerType, country: __('SE')
             })
         });
 
@@ -978,7 +1012,6 @@ function updatePrices(nodeList, dynamicPrices) {
             if (dynamicPrice) {
                 updatePriceElement(dynamicPrice.final_price, number);
 
-                // Update ARIA label for current price
                 const currentPriceLabel = 'Price ' + formatPriceForAria(dynamicPrice.final_price);
                 number.setAttribute('aria-label', currentPriceLabel);
 
@@ -1025,7 +1058,6 @@ function updatePrices(nodeList, dynamicPrices) {
 
 }
 
-// Helper function to format price for ARIA labels
 function formatPriceForAria(price) {
     if (typeof price === 'number') {
         return price.toFixed(2);
@@ -1035,8 +1067,7 @@ function formatPriceForAria(price) {
 
 function updatePriceElement(price, elementNode) {
     elementNode.dataset.price = price;
-    
-    // Update ARIA label when price changes
+
     const isOldPrice = elementNode.getAttribute('data-price-old');
     const priceLabel = isOldPrice ? 
         'Original Price ' + formatPriceForAria(price) : 
