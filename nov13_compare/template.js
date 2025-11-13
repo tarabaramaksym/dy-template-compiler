@@ -237,13 +237,30 @@ class DySwatchManager {
             return
         };
 
+        let allAttributesHaveSingleOption = true;
+
+        swatchAttributes.forEach(attribute => {
+            const allowedOptions = this.allowedAttributeOptions[attribute.id] || [];
+            
+            if (allowedOptions.length === 1) {
+                this.selectedValues[attribute.id] = allowedOptions[0].id;
+            } else {
+                allAttributesHaveSingleOption = false;
+            }
+        });
+
+        if (allAttributesHaveSingleOption) {
+            this.findSimpleIndex();
+            this.updateAddToCartState();
+        }
+
         let html = '<div class="dy-swatch-attribute">';
         html += '<div class="dy-swatch-attribute-options">';
         html += '<div class="dy-swatch-options-container" role="radiogroup" aria-label="' + swatchAttributes[0].label + '">';
 
         swatchAttributes.forEach(attribute => {
             const allowedOptions = this.allowedAttributeOptions[attribute.id] || [];
-            const visibleOptions = allowedOptions.slice(0, 7); // Show max 7 options
+            const visibleOptions = allowedOptions.slice(0, 7);
             const hiddenCount = Math.max(0, allowedOptions.length - 7);
 
             visibleOptions.forEach(option => {
@@ -261,6 +278,10 @@ class DySwatchManager {
 
         this.swatchesWrapper.innerHTML = html;
         this.bindEvents();
+
+        if (allAttributesHaveSingleOption) {
+            this.swatchesWrapper.style.display = 'none';
+        }
     }
 
     renderSwatchOption(attribute, option) {
@@ -561,7 +582,7 @@ function renderEnergyLabels(productEl, energyData) {
 
                 if (energyData.energy_pdf) {
                     energyHtml += '<a onclick="event.stopPropagation();" href="' + energyData.energy_pdf + '" target="_blank" class="energy-pdf-link gtm-exclude">' +
-                        __('Product info') +
+                        'Produktinfo' +
                     '</a>';
                 }
 
@@ -976,7 +997,7 @@ async function fetchPrices(shopId, skus, customerType) {
             method: 'POST',
             headers: headers,
             body: JSON.stringify({
-                shop: shopId || false, skus, customer_type: customerType, country: __('SE')
+                shop: shopId || false, skus, customer_type: customerType, country: 'SE'
             })
         });
 
@@ -1166,7 +1187,7 @@ function handleAddToCart(button) {
 }
 
 async function doFetch(targetUrl, formData, button) {
-    button.innerHTML = __('Adding...');
+    button.innerHTML = 'Lägger till...';
 
     const rawResponse = await fetch(targetUrl, {
         method: 'POST',
@@ -1201,7 +1222,7 @@ async function doFetch(targetUrl, formData, button) {
             });
         }
 
-        button.innerHTML = __('Add to cart');
+        button.innerHTML = 'Lägg i varukorg';
     }).catch(function (error) {
         console.log(error);
     });
