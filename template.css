@@ -557,10 +557,8 @@
     z-index: 11;
     position: absolute;
     left: -15px;
-    padding-left: 15px;
-    padding-bottom: 15px;
-    padding-right: 15px;
     top: 99%;
+    border-color: white;
 }
 
 @media (max-width: 1023px) {
@@ -581,8 +579,10 @@
         padding-top: 10px;
         opacity: 0;
         visibility: hidden;
-        transform: translateY(-100%);
+        transform: translateY(-100%) translateZ(0);
         transition: opacity 0.1s ease-out, visibility 0.1s ease-out, transform 0.25s ease-out;
+        backface-visibility: hidden;
+        will-change: transform;
     }
 }
 
@@ -592,7 +592,31 @@
         display: block;
         opacity: 1;
         visibility: visible;
-        transform: translateY(0);
+        transform: translateY(0) translateZ(0);
+    }
+}
+
+#dy-recommendations-${dyVariationId} .dy-recommendation-product__details .actions .actions-button-wrapper {
+    background-color: white;
+    height: 100%;
+    width: 100%;
+    position: relative;
+    top: -10px;
+}
+
+@media (min-width: 1024px) {
+    #dy-recommendations-${dyVariationId} .dy-recommendation-product__details .actions .actions-button-wrapper {
+        padding-top: 10px;
+        padding-left: 15px;
+        padding-bottom: 15px;
+        padding-right: 15px;
+    }
+}
+
+@media (max-width: 1023px) {
+    #dy-recommendations-${dyVariationId} .dy-recommendation-product__details .actions .actions-button-wrapper {
+        width: calc(100% - 22px);
+        left: 11px;
     }
 }
 
@@ -942,10 +966,26 @@
     background-color: #02862b;
 }
 
+#dy-recommendations-${dyVariationId} .product-usp-element[data-usp="free-delivery"] svg>path,
+#dy-recommendations-${dyVariationId} .product-usp-element[data-usp="free_delivery"] svg>path {
+    fill: #efefef;
+}
+
+#dy-recommendations-${dyVariationId} .product-usp-wrapper .product-usp-element[data-usp="free-delivery"],
+#dy-recommendations-${dyVariationId} .product-usp-wrapper .product-usp-element[data-usp="free_delivery"] {
+    color: #000 !important;
+    background-color: #efefef;
+}
+
 #dy-recommendations-${dyVariationId} .sale-driven-usp-element[data-balloon-text="free-delivery"],
 #dy-recommendations-${dyVariationId} .sale-driven-usp-element[data-balloon-text="free_delivery"] {
     color: #000;
     background-color: #efefef;
+}
+
+#dy-recommendations-${dyVariationId} .sale-driven-usp-element[data-balloon-text="available-online"],
+#dy-recommendations-${dyVariationId} .sale-driven-usp-element[data-balloon-text="available_online"] {
+    display: none;
 }
 
 /* Broken Paint / Tint Marker - In product details flow */
@@ -1410,52 +1450,44 @@
 
 #dy-recommendations-${dyVariationId} .dy-outer-wrap {
     cursor: pointer;
-    height: 24px;
-    width: 24px;
+    height: 32px;
+    width: 32px;
     position: relative;
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 3px;
     background-color: rgba(255,255,255,1);
 }
 
 #dy-recommendations-${dyVariationId} .dy-inner-wrap {
-    height: 24px;
-    width: 24px;
-    border-style: solid;
+    height: 32px;
+    width: 32px;
     padding: 2px;
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 3px;
-    border-width: 1px;
-    border-color: rgba(224,224,224,1);
+    border-bottom: 1px solid transparent;
     box-sizing: border-box;
     transition: border-color 0.2s ease;
 }
 
 #dy-recommendations-${dyVariationId} .dy-active-swatch .dy-inner-wrap {
-    border-radius: 3px;
-    border-width: 2px;
-    border-color: rgba(39,174,96,1);
+    border-color: rgba(153,153,153,1);
 }
 
 #dy-recommendations-${dyVariationId} .dy-inner-wrap:hover {
-    border-radius: 3px;
-    border-width: 2px;
-    border-color: rgba(39,174,96,1);
+    border-color: rgba(153,153,153,1);
 }
 
 @media (min-width: 1024px) {
     #dy-recommendations-${dyVariationId} .dy-outer-wrap {
-        height: 32px;
-        width: 32px;
+        height: 62px;
+        width: 62px;
     }
 
     #dy-recommendations-${dyVariationId} .dy-inner-wrap {
-        height: 32px;
-        width: 32px;
+        height: 62px;
+        width: 62px;
     }
 }
 
@@ -1477,16 +1509,16 @@
 }
 
 #dy-recommendations-${dyVariationId} .dy-visual-swatch {
-    width: 16px;
-    height: 16px;
-    min-width: 16px;
-    min-height: 16px;
+    width: 28px;
+    height: 28px;
+    min-width: 28px;
+    min-height: 28px;
 }
 
 @media (min-width: 1024px) {
     #dy-recommendations-${dyVariationId} .dy-visual-swatch {
-        width: 24px;
-        height: 24px;
+        height: 58px;
+        width: 58px;
     }
 }
 
